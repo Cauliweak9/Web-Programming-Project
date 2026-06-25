@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统仲裁后台 - Web3 Escrow</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-200">
+    <div id="app">
+        <nav class="bg-black border-b border-yellow-600 p-4 shadow-lg flex justify-between items-center">
+            <h1 class="text-2xl font-black text-yellow-500 tracking-widest">⚙️ SUPER ADMIN CONSOLE</h1>
+            <div class="space-x-4">
+                <button @click="goToMarket" class="text-gray-400 hover:text-white transition">返回前台</button>
+                <button @click="logout" class="bg-red-600 text-white px-4 py-1.5 rounded shadow hover:bg-red-700 transition">退出登录</button>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-6 max-w-6xl mt-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">全站交易大盘监控</h2>
+                <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">总订单数: {{ orders.length }}</span>
+            </div>
+            
+            <div v-if="orders.length === 0" class="text-gray-500 text-center py-10 bg-gray-800 rounded-xl shadow border border-gray-700">
+                📭 系统内暂无任何订单
+            </div>
+            
+            <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700" v-else>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
+                            <th class="p-4">订单ID</th>
+                            <th class="p-4">商品信息</th>
+                            <th class="p-4">买家</th>
+                            <th class="p-4">卖家</th>
+                            <th class="p-4">状态</th>
+                            <th class="p-4 text-center">上帝操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-750 transition">
+                            <td class="p-4 font-mono text-yellow-500">#{{ order.id }}</td>
+                            <td class="p-4">
+                                <div class="font-bold text-white">{{ order.product?.title || '未知商品' }}</div>
+                                <div class="text-xs text-gray-400">¥{{ order.product?.priceFiat || order.amount }}</div>
+                            </td>
+                            <td class="p-4 text-sm">{{ order.buyer?.nickname || '未知' }}</td>
+                            <td class="p-4 text-sm">{{ order.seller?.nickname || '未知' }}</td>
+                            <td class="p-4">
+                                <span class="px-2 py-1 rounded text-xs font-bold" :class="getStatusClass(order.status)">
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td class="p-4 flex justify-center space-x-2">
+                                <template v-if="order.status === 'DISPUTED'">
+                                    <button @click="arbitrate(order.id, 'RELEASE')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded transition">
+                                        资金放行(给卖家)
+                                    </button>
+                                    <button @click="arbitrate(order.id, 'REFUND')" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded transition">
+                                        强制退款(给买家)
+                                    </button>
+                                </template>
+                                <span v-else class="text-gray-500 text-xs italic">不可干预</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const token = localStorage.getItem('jwt_token');
+                const orders = ref([]);
+
+                const authHeaders = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+
+                onMounted(() => {
+                    if (!token) {
+                        alert('无权访问！');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    fetchGlobalOrders();
+                });
+
+                // 拉取全局订单 (对齐你的后端：直接返回 orders 数组)
+                const fetchGlobalOrders = async () => {
+                    try {
+                        const res = await fetch('http://localhost:3000/api/admin/orders', { headers: authHeaders });
+                        if (res.ok) {
+                            const data = await res.json();
+                            orders.value = data; // 你的后端直接 json(orders)，这里直接赋值
+                        } else {
+                            const err = await res.json();
+                            alert(err.error || '权限不足');
+                            window.location.href = 'index.html'; // 非管理员踢回首页
+                        }
+                    } catch (e) { console.error('获取大盘数据失败', e); }
+                };
+
+                // 执行强制仲裁 (对齐你的后端：decision 字段)
+                const arbitrate = async (orderId, decision) => {
+                    const actionText = decision === 'RELEASE' ? '放款给卖家' : '退款给买家';
+                    if(!confirm(`⚠️ 危险操作：确认强行将订单 #${orderId} ${actionText} 吗？`)) return;
+
+                    try {
+                        const res = await fetch(`http://localhost:3000/api/admin/orders/${orderId}/arbitrate`, {
+                            method: 'POST', // 你的后端没写是 POST 还是 PATCH，这里假设你的路由配的是 POST
+                            headers: authHeaders,
+                            body: JSON.stringify({ decision })
+                        });
+                        
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert(data.message);
+                            fetchGlobalOrders(); // 刷新表格
+                        } else {
+                            alert(`操作失败: ${data.error}`);
+                        }
+                    } catch (e) { alert('网络错误'); }
+                };
+
+                // UI 辅助方法：状态高亮
+                const getStatusClass = (status) => {
+                    const classes = {
+                        'PENDING': 'bg-gray-700 text-gray-300',
+                        'LOCKED': 'bg-blue-900 text-blue-300', 
+                        'SHIPPED': 'bg-yellow-900 text-yellow-300',
+                        // 👇 新增高亮争议状态
+                        'DISPUTED': 'bg-red-900 text-red-300 animate-pulse border border-red-500 font-bold', 
+                        'RELEASED': 'bg-green-900 text-green-300',
+                        'REFUNDED': 'bg-gray-800 text-gray-500 line-through'
+                    };
+                    return classes[status] || 'bg-gray-600 text-gray-300';
+                };
+
+                const logout = () => {
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = 'login.html';
+                };
+                const goToMarket = () => { window.location.href = 'index.html'; };
+
+                return { orders, arbitrate, getStatusClass, logout, goToMarket };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

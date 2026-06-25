@@ -1,0 +1,3 @@
+[profile.default]
+src = "contracts"  # 告诉 Forge 去这里找 Solidity 源码
+out = "out"        # 编译产物（ABI/Bytecode）输出到这里
