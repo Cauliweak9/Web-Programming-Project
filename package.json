@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "seed": "prisma db seed"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +23,8 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3"
   },
-  "type": "module"
+  "type": "module",
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
 }
