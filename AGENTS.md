@@ -24,7 +24,7 @@ This is a Web Programming course project: Campus Second-hand Trading Platform.
 ## Course Completion Plan
 Implement the missing course-required modules step by step:
 1. seed demo data
-2. product management front-end
+2. product management front-endgit diff
 3. review and credit system front-end
 4. admin user/product/statistics management
 5. API documentation and third-party demo

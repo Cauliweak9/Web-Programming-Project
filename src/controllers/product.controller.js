@@ -1,39 +1,81 @@
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
-// 1. 发布商品 (保持不变)
+const parseOptionalFloat = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    const parsed = parseFloat(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const parseRequiredFloat = (value) => {
+    const parsed = parseFloat(value);
+    return Number.isNaN(parsed) ? null : parsed;
+};
+
+const productDataFromBody = (body, { partial = false } = {}) => {
+    const priceFiat = parseRequiredFloat(body.priceFiat);
+    const originalPrice = parseOptionalFloat(body.originalPrice);
+
+    const data = {
+        title: body.title,
+        description: body.description,
+        category: body.category,
+        priceFiat: priceFiat === null ? undefined : priceFiat,
+        originalPrice,
+        imageUrl: body.imageUrl === undefined ? undefined : (body.imageUrl || null),
+        condition: body.condition
+    };
+
+    if (partial) {
+        return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+    }
+
+    return data;
+};
+
 export const createProduct = async (req, res) => {
     try {
         const { title, description, category, priceFiat, condition } = req.body;
-        const sellerId = req.user.userId;
+        const parsedPrice = parseRequiredFloat(priceFiat);
+
+        if (!title || !description || !category || !condition || parsedPrice === null) {
+            return res.status(400).json({ error: '请填写完整的商品标题、描述、分类、价格和成色' });
+        }
 
         const product = await prisma.product.create({
             data: {
-                title,
-                description,
-                category,
-                priceFiat: parseFloat(priceFiat),
-                condition,
-                sellerId
+                ...productDataFromBody(req.body),
+                sellerId: req.user.userId
             }
         });
+
         res.status(201).json({ message: '商品发布成功', product });
     } catch (error) {
         res.status(500).json({ error: '发布商品失败', details: error.message });
     }
 };
 
-// 2. 获取商品列表 (高级版：支持多条件筛选、分页、价格区间、排序)
-// GET /api/products?keyword=xxx&category=xxx&minPrice=10&maxPrice=100&page=1&limit=10&sortBy=priceFiat&sortOrder=desc
 export const getProducts = async (req, res) => {
     try {
-        const { keyword, category, minPrice, maxPrice, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const {
+            keyword,
+            category,
+            minPrice,
+            maxPrice,
+            page = 1,
+            limit = 10,
+            sortBy = 'createdAt',
+            sortOrder = 'desc'
+        } = req.query;
 
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
+        const pageNum = Math.max(parseInt(page) || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 50);
         const skip = (pageNum - 1) * limitNum;
+        const safeSortBy = ['createdAt', 'priceFiat', 'originalPrice', 'title'].includes(sortBy) ? sortBy : 'createdAt';
+        const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
 
-        // 动态构建查询条件 (只展示未下架的商品)
         const where = { isAvailable: true };
 
         if (category) {
@@ -43,18 +85,19 @@ export const getProducts = async (req, res) => {
         if (keyword) {
             where.OR = [
                 { title: { contains: keyword, mode: 'insensitive' } },
-                { description: { contains: keyword, mode: 'insensitive' } }
+                { description: { contains: keyword, mode: 'insensitive' } },
+                { category: { contains: keyword, mode: 'insensitive' } }
             ];
         }
 
-        // 价格区间筛选
-        if (minPrice || maxPrice) {
+        const min = parseOptionalFloat(minPrice);
+        const max = parseOptionalFloat(maxPrice);
+        if (min !== undefined || max !== undefined) {
             where.priceFiat = {};
-            if (minPrice) where.priceFiat.gte = parseFloat(minPrice);
-            if (maxPrice) where.priceFiat.lte = parseFloat(maxPrice);
+            if (min !== undefined && min !== null) where.priceFiat.gte = min;
+            if (max !== undefined && max !== null) where.priceFiat.lte = max;
         }
 
-        // 利用 Prisma 的 $transaction 并发查询总数和分页数据，极大提升性能
         const [total, products] = await prisma.$transaction([
             prisma.product.count({ where }),
             prisma.product.findMany({
@@ -62,11 +105,9 @@ export const getProducts = async (req, res) => {
                 skip,
                 take: limitNum,
                 include: {
-                    seller: { select: { nickname: true, email: true } }
+                    seller: { select: { id: true, nickname: true, email: true } }
                 },
-                orderBy: {
-                    [sortBy]: sortOrder // 动态排序，例如按照价格(priceFiat)或时间(createdAt)
-                }
+                orderBy: { [safeSortBy]: safeSortOrder }
             })
         ]);
 
@@ -84,35 +125,43 @@ export const getProducts = async (req, res) => {
     }
 };
 
-// 3. 编辑商品 (受保护：带越权校验)
-// PUT /api/products/:id
+export const getMyProducts = async (req, res) => {
+    try {
+        const products = await prisma.product.findMany({
+            where: { sellerId: req.user.userId },
+            include: {
+                seller: { select: { id: true, nickname: true, email: true } },
+                _count: { select: { orders: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({
+            meta: { total: products.length },
+            products
+        });
+    } catch (error) {
+        res.status(500).json({ error: '获取我的发布失败', details: error.message });
+    }
+};
+
 export const updateProduct = async (req, res) => {
     try {
         const productId = parseInt(req.params.id);
-        const currentUserId = req.user.userId; // 从 JWT 提取的当前操作者 ID
-        const { title, description, category, priceFiat, condition } = req.body;
+        const currentUserId = req.user.userId;
 
-        // A. 先查出该商品，确认是否存在
         const product = await prisma.product.findUnique({ where: { id: productId } });
         if (!product) {
             return res.status(404).json({ error: '商品不存在' });
         }
 
-        // B. 安全红线：检查当前登录用户是不是该商品的卖家
         if (product.sellerId !== currentUserId) {
             return res.status(403).json({ error: '越权操作：你不是该商品的发布者，无权修改' });
         }
 
-        // C. 执行更新
         const updatedProduct = await prisma.product.update({
             where: { id: productId },
-            data: {
-                title,
-                description,
-                category,
-                priceFiat: priceFiat ? parseFloat(priceFiat) : undefined,
-                condition
-            }
+            data: productDataFromBody(req.body, { partial: true })
         });
 
         res.json({ message: '商品修改成功', product: updatedProduct });
@@ -121,8 +170,6 @@ export const updateProduct = async (req, res) => {
     }
 };
 
-// 4. 下架商品 (受保护：软删除，不直接物理删除数据，避免破坏历史订单关联)
-// DELETE /api/products/:id
 export const delistProduct = async (req, res) => {
     try {
         const productId = parseInt(req.params.id);
@@ -133,12 +180,10 @@ export const delistProduct = async (req, res) => {
             return res.status(404).json({ error: '商品不存在' });
         }
 
-        // 安全检查
         if (product.sellerId !== currentUserId) {
             return res.status(403).json({ error: '越权操作：无权下架该商品' });
         }
 
-        // 软删除：将 isAvailable 置为 false
         await prisma.product.update({
             where: { id: productId },
             data: { isAvailable: false }
@@ -150,13 +195,40 @@ export const delistProduct = async (req, res) => {
     }
 };
 
-// 5. 获取商品详情 (开放接口)
-// GET /api/products/:id
+export const deleteProduct = async (req, res) => {
+    try {
+        const productId = parseInt(req.params.id);
+        const currentUserId = req.user.userId;
+
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            include: { _count: { select: { orders: true } } }
+        });
+
+        if (!product) {
+            return res.status(404).json({ error: '商品不存在' });
+        }
+
+        if (product.sellerId !== currentUserId) {
+            return res.status(403).json({ error: '越权操作：无权删除该商品' });
+        }
+
+        if (product._count.orders > 0) {
+            return res.status(400).json({ error: '该商品已有订单记录，只能下架，不能删除' });
+        }
+
+        await prisma.product.delete({ where: { id: productId } });
+
+        res.json({ message: '商品已成功删除' });
+    } catch (error) {
+        res.status(500).json({ error: '删除商品失败', details: error.message });
+    }
+};
+
 export const getProductById = async (req, res) => {
     try {
         const productId = parseInt(req.params.id);
 
-        // 查找唯一的商品，并把卖家的基本信息一并带出来
         const product = await prisma.product.findUnique({
             where: { id: productId },
             include: {
@@ -164,16 +236,15 @@ export const getProductById = async (req, res) => {
                     select: {
                         id: true,
                         nickname: true,
-                        email: true
-                        // 稍后我们在这里加上信用积分字段
+                        email: true,
+                        creditRating: true
                     }
                 }
             }
         });
 
-        // 如果找不到商品，返回 404
         if (!product) {
-            return res.status(404).json({ error: '商品不存在或已被彻底删除' });
+            return res.status(404).json({ error: '商品不存在或已被删除' });
         }
 
         res.json(product);

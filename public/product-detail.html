@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>商品详情 - Web3 Escrow</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app">
+        <nav class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider">商品详情</h1>
+            <button @click="goHome" class="bg-white/15 px-4 py-1.5 rounded hover:bg-white/25 transition">返回首页</button>
+        </nav>
+
+        <main class="container mx-auto p-6">
+            <div v-if="loading" class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-500">正在加载商品...</div>
+            <div v-else-if="error" class="bg-white rounded-xl shadow-sm p-10 text-center text-red-500">{{ error }}</div>
+
+            <div v-else class="bg-white rounded-xl shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+                <div class="bg-gray-100 min-h-[360px]">
+                    <img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.title" class="w-full h-full object-cover">
+                    <div v-else class="w-full h-full min-h-[360px] flex items-center justify-center text-gray-400">暂无图片</div>
+                </div>
+
+                <div class="p-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">{{ product.category }}</span>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">{{ product.condition }}</span>
+                    </div>
+
+                    <h2 class="text-3xl font-black text-gray-900 mb-4">{{ product.title }}</h2>
+                    <p class="text-gray-600 leading-7 mb-6 whitespace-pre-wrap">{{ product.description }}</p>
+
+                    <div class="mb-6">
+                        <div class="text-4xl font-black text-red-500">¥{{ product.priceFiat }}</div>
+                        <div v-if="product.originalPrice" class="text-gray-400 line-through mt-1">原价 ¥{{ product.originalPrice }}</div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm text-gray-600">
+                        <div class="font-bold text-gray-800 mb-1">卖家信息</div>
+                        <div>{{ product.seller?.nickname || '未知卖家' }}</div>
+                        <div v-if="product.seller?.creditRating">信用分：{{ product.seller.creditRating }}</div>
+                    </div>
+
+                    <button @click="buyProduct" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg hover:bg-indigo-700 transition">
+                        我想要
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const API_BASE = window.location.origin;
+
+        createApp({
+            setup() {
+                const token = localStorage.getItem('jwt_token');
+                const product = ref(null);
+                const loading = ref(true);
+                const error = ref('');
+                const id = new URLSearchParams(window.location.search).get('id');
+
+                const authHeaders = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+
+                onMounted(() => {
+                    if (!token) {
+                        alert('请先登录');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    fetchProduct();
+                });
+
+                const fetchProduct = async () => {
+                    if (!id) {
+                        error.value = '缺少商品 ID';
+                        loading.value = false;
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/products/${id}`);
+                        const data = await res.json();
+                        if (!res.ok) {
+                            error.value = data.error || '商品不存在';
+                            return;
+                        }
+                        product.value = data;
+                    } catch (e) {
+                        error.value = '网络错误，无法加载商品';
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const buyProduct = async () => {
+                    if (!product.value) return;
+                    if (!confirm(`确认购买商品《${product.value.title}》吗？`)) return;
+
+                    const simulatedCryptoAmount = parseFloat((product.value.priceFiat / 20000).toFixed(4)) || 0.1;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/orders`, {
+                            method: 'POST',
+                            headers: authHeaders,
+                            body: JSON.stringify({
+                                productId: product.value.id,
+                                cryptoAmount: simulatedCryptoAmount
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            alert(`下单失败: ${data.error}`);
+                            return;
+                        }
+                        alert('下单成功，即将跳转到订单中心。');
+                        window.location.href = 'dashboard.html';
+                    } catch (e) {
+                        alert('网络错误');
+                    }
+                };
+
+                const goHome = () => {
+                    window.location.href = 'index.html';
+                };
+
+                return { product, loading, error, buyProduct, goHome };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -36,6 +36,8 @@ model Product {
   description String   
   category    String   
   priceFiat   Float    
+  originalPrice Float?
+  imageUrl    String?
   condition   String   
   isAvailable Boolean  @default(true)
   sellerId    Int
