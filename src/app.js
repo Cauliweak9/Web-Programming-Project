@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes.js';
 import productRoutes from './routes/product.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import orderRoutes from './routes/order.routes.js';
+import reportRoutes from './routes/report.routes.js';
 import { startBlockchainListener } from './services/blockchain.listener.js';
 import adminRoutes from './routes/admin.routes.js';
 
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 // 启动服务器
 const PORT = process.env.PORT || 3000;

@@ -46,9 +46,14 @@
                         <div v-if="product.seller?.creditRating">信用分：{{ product.seller.creditRating }}</div>
                     </div>
 
-                    <button @click="buyProduct" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg hover:bg-indigo-700 transition">
-                        我想要
-                    </button>
+                    <div class="space-y-3">
+                        <button @click="buyProduct" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg hover:bg-indigo-700 transition">
+                            我想要
+                        </button>
+                        <button @click="reportProduct" class="w-full bg-red-50 text-red-600 font-bold p-3 rounded-lg hover:bg-red-100 transition">
+                            举报商品
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -128,7 +133,29 @@
                     }
                 };
 
+                const reportProduct = async () => {
+                    if (!product.value) return;
+                    const reason = prompt('请输入举报原因');
+                    if (!reason || !reason.trim()) return;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/reports`, {
+                            method: 'POST',
+                            headers: authHeaders,
+                            body: JSON.stringify({
+                                productId: product.value.id,
+                                reason
+                            })
+                        });
+                        const data = await res.json();
+                        alert(data.message || data.error || '举报已提交');
+                    } catch (e) {
+                        alert('网络错误');
+                    }
+                };
+
                 const viewSellerProfile = () => {
+                    if (!product.value?.seller?.id) return;
                     window.location.href = `user-profile.html?id=${product.value.seller.id}`;
                 };
 
@@ -136,7 +163,7 @@
                     window.location.href = 'index.html';
                 };
 
-                return { product, loading, error, buyProduct, viewSellerProfile, goHome };
+                return { product, loading, error, buyProduct, reportProduct, viewSellerProfile, goHome };
             }
         }).mount('#app');
     </script>

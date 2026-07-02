@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>系统仲裁后台 - Web3 Escrow</title>
+    <title>后台管理 - Web3 Escrow</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -16,51 +16,138 @@
             </div>
         </nav>
 
-        <div class="container mx-auto p-6 max-w-6xl mt-6 space-y-10">
+        <div class="container mx-auto p-6 max-w-7xl mt-6 space-y-10">
             <section>
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">全站交易大盘监控</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">总订单数: {{ orders.length }}</span>
+                <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">数据统计</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                        <div class="text-gray-400 text-sm">用户数</div>
+                        <div class="text-3xl font-black text-white">{{ stats.usersCount || 0 }}</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                        <div class="text-gray-400 text-sm">商品数</div>
+                        <div class="text-3xl font-black text-white">{{ stats.productsCount || 0 }}</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                        <div class="text-gray-400 text-sm">订单数</div>
+                        <div class="text-3xl font-black text-white">{{ stats.ordersCount || 0 }}</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                        <div class="text-gray-400 text-sm">已完成交易额</div>
+                        <div class="text-3xl font-black text-yellow-400">¥{{ stats.completedTradeAmount || 0 }}</div>
+                    </div>
                 </div>
+            </section>
 
-                <div v-if="orders.length === 0" class="text-gray-500 text-center py-10 bg-gray-800 rounded-xl shadow border border-gray-700">
-                    系统内暂无任何订单
+            <section>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">用户管理</h2>
+                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ users.length }} 人</span>
                 </div>
+                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">邮箱</th>
+                                <th class="p-4">昵称</th>
+                                <th class="p-4">角色</th>
+                                <th class="p-4">信用分</th>
+                                <th class="p-4">状态</th>
+                                <th class="p-4 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-700">
+                                <td class="p-4 font-mono text-yellow-500">#{{ user.id }}</td>
+                                <td class="p-4">{{ user.email }}</td>
+                                <td class="p-4">{{ user.nickname }}</td>
+                                <td class="p-4">{{ user.role }}</td>
+                                <td class="p-4">{{ user.creditRating }}</td>
+                                <td class="p-4">
+                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="user.isBanned ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'">
+                                        {{ user.isBanned ? '已封禁' : '正常' }}
+                                    </span>
+                                </td>
+                                <td class="p-4 flex justify-center gap-2">
+                                    <button v-if="!user.isBanned" @click="banUser(user)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">封禁</button>
+                                    <button v-else @click="unbanUser(user)" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">解封</button>
+                                    <button @click="resetPassword(user)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">重置密码</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700" v-else>
+            <section>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">商品管理</h2>
+                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ products.length }} 件</span>
+                </div>
+                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">标题</th>
+                                <th class="p-4">分类</th>
+                                <th class="p-4">价格</th>
+                                <th class="p-4">卖家</th>
+                                <th class="p-4">状态</th>
+                                <th class="p-4 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <tr v-for="product in products" :key="product.id" class="hover:bg-gray-700">
+                                <td class="p-4 font-mono text-yellow-500">#{{ product.id }}</td>
+                                <td class="p-4">{{ product.title }}</td>
+                                <td class="p-4">{{ product.category }}</td>
+                                <td class="p-4">¥{{ product.priceFiat }}</td>
+                                <td class="p-4">{{ product.seller?.nickname || '未知' }}</td>
+                                <td class="p-4">
+                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="product.isAvailable ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'">
+                                        {{ product.isAvailable ? '在售' : '已下架' }}
+                                    </span>
+                                </td>
+                                <td class="p-4 flex justify-center gap-2">
+                                    <button @click="takedownProduct(product)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">下架</button>
+                                    <button @click="deleteProduct(product)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">订单仲裁</h2>
+                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ orders.length }} 单</span>
+                </div>
+                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
                                 <th class="p-4">订单ID</th>
-                                <th class="p-4">商品信息</th>
+                                <th class="p-4">商品</th>
                                 <th class="p-4">买家</th>
                                 <th class="p-4">卖家</th>
                                 <th class="p-4">状态</th>
-                                <th class="p-4 text-center">仲裁操作</th>
+                                <th class="p-4 text-center">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-700">
-                            <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-700 transition">
+                            <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-700">
                                 <td class="p-4 font-mono text-yellow-500">#{{ order.id }}</td>
-                                <td class="p-4">
-                                    <div class="font-bold text-white">{{ order.product?.title || '未知商品' }}</div>
-                                    <div class="text-xs text-gray-400">¥{{ order.product?.priceFiat || order.amount }}</div>
-                                </td>
-                                <td class="p-4 text-sm">{{ order.buyer?.nickname || '未知' }}</td>
-                                <td class="p-4 text-sm">{{ order.seller?.nickname || '未知' }}</td>
-                                <td class="p-4">
-                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="getStatusClass(order.status)">
-                                        {{ order.status }}
-                                    </span>
-                                </td>
-                                <td class="p-4 flex justify-center space-x-2">
+                                <td class="p-4">{{ order.product?.title || '未知商品' }}</td>
+                                <td class="p-4">{{ order.buyer?.nickname || '未知' }}</td>
+                                <td class="p-4">{{ order.seller?.nickname || '未知' }}</td>
+                                <td class="p-4">{{ order.status }}</td>
+                                <td class="p-4 flex justify-center gap-2">
                                     <template v-if="order.status === 'DISPUTED'">
-                                        <button @click="arbitrate(order.id, 'RELEASE')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded transition">
-                                            放款给卖家
-                                        </button>
-                                        <button @click="arbitrate(order.id, 'REFUND')" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded transition">
-                                            退款给买家
-                                        </button>
+                                        <button @click="arbitrate(order.id, 'RELEASE')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">放款</button>
+                                        <button @click="arbitrate(order.id, 'REFUND')" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">退款</button>
                                     </template>
                                     <span v-else class="text-gray-500 text-xs italic">不可干预</span>
                                 </td>
@@ -71,50 +158,68 @@
             </section>
 
             <section>
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">评价管理</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">总评价数: {{ reviews.length }}</span>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">举报处理</h2>
+                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ reports.length }} 条</span>
                 </div>
-
-                <div v-if="reviews.length === 0" class="text-gray-500 text-center py-10 bg-gray-800 rounded-xl shadow border border-gray-700">
-                    暂无评价
-                </div>
-
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700" v-else>
+                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">评价ID</th>
+                                <th class="p-4">ID</th>
+                                <th class="p-4">商品</th>
+                                <th class="p-4">原因</th>
+                                <th class="p-4">举报人</th>
+                                <th class="p-4">状态</th>
+                                <th class="p-4 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <tr v-for="report in reports" :key="report.id" class="hover:bg-gray-700">
+                                <td class="p-4 font-mono text-yellow-500">#{{ report.id }}</td>
+                                <td class="p-4">{{ report.product?.title || '未知商品' }}</td>
+                                <td class="p-4 max-w-md">{{ report.reason }}</td>
+                                <td class="p-4">{{ report.reporter?.nickname || '未知' }}</td>
+                                <td class="p-4">{{ report.status }}</td>
+                                <td class="p-4 text-center">
+                                    <button v-if="report.status === 'PENDING'" @click="resolveReport(report)" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">标记已处理</button>
+                                    <span v-else class="text-gray-500 text-xs italic">已处理</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">评价管理</h2>
+                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ reviews.length }} 条</span>
+                </div>
+                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
+                                <th class="p-4">ID</th>
                                 <th class="p-4">评分</th>
                                 <th class="p-4">内容</th>
                                 <th class="p-4">评价人</th>
                                 <th class="p-4">被评价人</th>
                                 <th class="p-4">状态</th>
-                                <th class="p-4 text-center">管理操作</th>
+                                <th class="p-4 text-center">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-700">
-                            <tr v-for="review in reviews" :key="review.id" class="hover:bg-gray-700 transition">
+                            <tr v-for="review in reviews" :key="review.id" class="hover:bg-gray-700">
                                 <td class="p-4 font-mono text-yellow-500">#{{ review.id }}</td>
                                 <td class="p-4 text-yellow-400">{{ stars(review.rating) }}</td>
-                                <td class="p-4 text-sm max-w-md">
-                                    <div>{{ review.content }}</div>
-                                    <div v-if="review.order?.product" class="text-xs text-gray-500 mt-1">{{ review.order.product.title }}</div>
-                                </td>
-                                <td class="p-4 text-sm">{{ review.reviewer?.nickname || '未知' }}</td>
-                                <td class="p-4 text-sm">{{ review.reviewee?.nickname || '未知' }}</td>
-                                <td class="p-4">
-                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="review.isHidden ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'">
-                                        {{ review.isHidden ? '已隐藏' : '公开' }}
-                                    </span>
-                                </td>
+                                <td class="p-4 max-w-md">{{ review.content }}</td>
+                                <td class="p-4">{{ review.reviewer?.nickname || '未知' }}</td>
+                                <td class="p-4">{{ review.reviewee?.nickname || '未知' }}</td>
+                                <td class="p-4">{{ review.isHidden ? '已隐藏' : '公开' }}</td>
                                 <td class="p-4 flex justify-center gap-2">
-                                    <button @click="toggleReviewHidden(review)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded transition">
-                                        {{ review.isHidden ? '恢复' : '隐藏' }}
-                                    </button>
-                                    <button @click="deleteReview(review)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded transition">
-                                        删除
-                                    </button>
+                                    <button @click="toggleReviewHidden(review)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">{{ review.isHidden ? '恢复' : '隐藏' }}</button>
+                                    <button @click="deleteReview(review)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">删除</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -131,113 +236,121 @@
         createApp({
             setup() {
                 const token = localStorage.getItem('jwt_token');
+                const stats = ref({});
+                const users = ref([]);
+                const products = ref([]);
                 const orders = ref([]);
                 const reviews = ref([]);
+                const reports = ref([]);
 
                 const authHeaders = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 };
 
-                onMounted(() => {
+                onMounted(async () => {
                     if (!token) {
-                        alert('无权访问');
+                        alert('无权访问，请先登录');
                         window.location.href = 'login.html';
                         return;
                     }
-                    fetchGlobalOrders();
-                    fetchReviews();
+                    await refreshAll();
                 });
 
-                const fetchGlobalOrders = async () => {
+                const api = async (url, options = {}) => {
+                    const res = await fetch(`${API_BASE}${url}`, {
+                        ...options,
+                        headers: { ...authHeaders, ...(options.headers || {}) }
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(data.error || '操作失败');
+                    }
+                    return data;
+                };
+
+                const refreshAll = async () => {
                     try {
-                        const res = await fetch(`${API_BASE}/api/admin/orders`, { headers: authHeaders });
-                        if (res.ok) {
-                            orders.value = await res.json();
-                        } else {
-                            const err = await res.json();
-                            alert(err.error || '权限不足');
-                            window.location.href = 'index.html';
-                        }
-                    } catch (e) {
-                        console.error('获取大盘数据失败', e);
+                        const [statsData, usersData, productsData, ordersData, reviewsData, reportsData] = await Promise.all([
+                            api('/api/admin/stats'),
+                            api('/api/admin/users'),
+                            api('/api/admin/products'),
+                            api('/api/admin/orders'),
+                            api('/api/admin/reviews'),
+                            api('/api/admin/reports')
+                        ]);
+                        stats.value = statsData;
+                        users.value = usersData;
+                        products.value = productsData;
+                        orders.value = ordersData;
+                        reviews.value = reviewsData;
+                        reports.value = reportsData;
+                    } catch (error) {
+                        alert(error.message || '无权限访问后台');
+                        window.location.href = 'index.html';
                     }
                 };
 
-                const fetchReviews = async () => {
+                const banUser = async (user) => {
+                    if (!confirm(`确认封禁 ${user.email} 吗？`)) return;
+                    await api(`/api/admin/users/${user.id}/ban`, { method: 'PATCH' });
+                    refreshAll();
+                };
+
+                const unbanUser = async (user) => {
+                    await api(`/api/admin/users/${user.id}/unban`, { method: 'PATCH' });
+                    refreshAll();
+                };
+
+                const resetPassword = async (user) => {
+                    if (!confirm(`确认将 ${user.email} 的密码重置为 123456 吗？`)) return;
+                    const data = await api(`/api/admin/users/${user.id}/reset-password`, { method: 'PATCH' });
+                    alert(data.message);
+                };
+
+                const takedownProduct = async (product) => {
+                    if (!confirm(`确认下架《${product.title}》吗？`)) return;
+                    await api(`/api/admin/products/${product.id}/takedown`, { method: 'PATCH' });
+                    refreshAll();
+                };
+
+                const deleteProduct = async (product) => {
+                    if (!confirm(`确认删除《${product.title}》吗？已有订单的商品不能删除。`)) return;
                     try {
-                        const res = await fetch(`${API_BASE}/api/admin/reviews`, { headers: authHeaders });
-                        if (res.ok) {
-                            reviews.value = await res.json();
-                        }
-                    } catch (e) {
-                        console.error('获取评价失败', e);
+                        await api(`/api/admin/products/${product.id}`, { method: 'DELETE' });
+                        refreshAll();
+                    } catch (error) {
+                        alert(error.message);
                     }
                 };
 
                 const arbitrate = async (orderId, decision) => {
                     const actionText = decision === 'RELEASE' ? '放款给卖家' : '退款给买家';
                     if (!confirm(`确认将订单 #${orderId} ${actionText} 吗？`)) return;
+                    await api(`/api/admin/orders/${orderId}/arbitrate`, {
+                        method: 'POST',
+                        body: JSON.stringify({ decision })
+                    });
+                    refreshAll();
+                };
 
-                    try {
-                        const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/arbitrate`, {
-                            method: 'POST',
-                            headers: authHeaders,
-                            body: JSON.stringify({ decision })
-                        });
-
-                        const data = await res.json();
-                        if (res.ok) {
-                            alert(data.message);
-                            fetchGlobalOrders();
-                        } else {
-                            alert(`操作失败: ${data.error}`);
-                        }
-                    } catch (e) {
-                        alert('网络错误');
-                    }
+                const resolveReport = async (report) => {
+                    await api(`/api/admin/reports/${report.id}/resolve`, { method: 'PATCH' });
+                    refreshAll();
                 };
 
                 const toggleReviewHidden = async (review) => {
-                    const nextHidden = !review.isHidden;
-                    const res = await fetch(`${API_BASE}/api/admin/reviews/${review.id}/hide`, {
+                    await api(`/api/admin/reviews/${review.id}/hide`, {
                         method: 'PATCH',
-                        headers: authHeaders,
-                        body: JSON.stringify({ isHidden: nextHidden })
+                        body: JSON.stringify({ isHidden: !review.isHidden })
                     });
-                    const data = await res.json();
-                    if (!res.ok) {
-                        alert(data.error || '操作失败');
-                        return;
-                    }
-                    fetchReviews();
+                    refreshAll();
                 };
 
                 const deleteReview = async (review) => {
                     if (!confirm(`确认删除评价 #${review.id} 吗？`)) return;
-                    const res = await fetch(`${API_BASE}/api/admin/reviews/${review.id}`, {
-                        method: 'DELETE',
-                        headers: authHeaders
-                    });
-                    const data = await res.json();
-                    if (!res.ok) {
-                        alert(data.error || '删除失败');
-                        return;
-                    }
-                    fetchReviews();
-                };
-
-                const getStatusClass = (status) => {
-                    const classes = {
-                        PENDING: 'bg-gray-700 text-gray-300',
-                        LOCKED: 'bg-blue-900 text-blue-300',
-                        SHIPPED: 'bg-yellow-900 text-yellow-300',
-                        DISPUTED: 'bg-red-900 text-red-300 animate-pulse border border-red-500 font-bold',
-                        RELEASED: 'bg-green-900 text-green-300',
-                        REFUNDED: 'bg-gray-800 text-gray-500 line-through',
-                        COMPLETED: 'bg-green-900 text-green-300'
-                    };
-                    return classes[status] || 'bg-gray-600 text-gray-300';
+                    await api(`/api/admin/reviews/${review.id}`, { method: 'DELETE' });
+                    refreshAll();
                 };
 
                 const stars = (rating) => '★'.repeat(rating) + '☆'.repeat(5 - rating);
@@ -248,12 +361,21 @@
                 const goToMarket = () => { window.location.href = 'index.html'; };
 
                 return {
+                    stats,
+                    users,
+                    products,
                     orders,
                     reviews,
+                    reports,
+                    banUser,
+                    unbanUser,
+                    resetPassword,
+                    takedownProduct,
+                    deleteProduct,
                     arbitrate,
+                    resolveReport,
                     toggleReviewHidden,
                     deleteReview,
-                    getStatusClass,
                     stars,
                     logout,
                     goToMarket

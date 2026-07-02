@@ -7,77 +7,93 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// 👇 新增角色枚举
 enum Role {
   USER
   ADMIN
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  email           String    @unique
-  passwordHash    String    
+  id              Int      @id @default(autoincrement())
+  email           String   @unique
+  passwordHash    String
   nickname        String
-  creditRating    Int       @default(100) 
-  role            Role      @default(USER) // 👇 新增角色字段，默认为普通用户
-  createdAt       DateTime  @default(now())
-  
-  products        Product[] 
-  sentReviews     Review[]  @relation("SentReviews")
-  receivedReviews Review[]  @relation("ReceivedReviews")
+  creditRating    Int      @default(100)
+  isBanned        Boolean  @default(false)
+  role            Role     @default(USER)
+  createdAt       DateTime @default(now())
 
-  buyerOrders     Order[]   @relation("BuyerOrders")
-  sellerOrders    Order[]   @relation("SellerOrders")
+  products        Product[]
+  reports         Report[]
+  sentReviews     Review[] @relation("SentReviews")
+  receivedReviews Review[] @relation("ReceivedReviews")
+
+  buyerOrders     Order[]  @relation("BuyerOrders")
+  sellerOrders    Order[]  @relation("SellerOrders")
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String   
-  category    String   
-  priceFiat   Float    
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  category      String
+  priceFiat     Float
   originalPrice Float?
-  imageUrl    String?
-  condition   String   
-  isAvailable Boolean  @default(true)
-  sellerId    Int
-  createdAt   DateTime @default(now())
+  imageUrl      String?
+  condition     String
+  isAvailable   Boolean  @default(true)
+  sellerId      Int
+  createdAt     DateTime @default(now())
 
-  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  orders      Order[]
+  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders        Order[]
+  reports       Report[]
+}
+
+model Report {
+  id         Int       @id @default(autoincrement())
+  reason     String
+  status     String    @default("PENDING")
+  createdAt  DateTime  @default(now())
+  handledAt  DateTime?
+
+  reporterId Int
+  reporter   User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  productId  Int
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Review {
-  id          Int      @id @default(autoincrement())
-  rating      Int      
-  content     String   
-  isHidden    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  rating     Int
+  content    String
+  isHidden   Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  reviewerId  Int      
-  revieweeId  Int      
-  orderId      Int?     @unique
+  reviewerId Int
+  revieweeId Int
+  orderId    Int?     @unique
 
-  reviewer    User     @relation("SentReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewee    User     @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
-  order       Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reviewer   User     @relation("SentReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee   User     @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+  order      Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 enum OrderStatus {
-  PENDING        // 买家在 Web2 创单，尚未链上锁仓
-  LOCKED         // 链上资金已成功托管
-  SHIPPED        // 卖家已发货
-  COMPLETED      // 买家确认收货，正常放款
-  DISPUTED       // 交易发生纠纷，进入仲裁
-  REFUNDED       // 仲裁结果：全额退款给买家
-  RELEASED       // 👇 新增：仲裁结果：强行放款给卖家 (区分于正常 COMPLETED)
+  PENDING
+  LOCKED
+  SHIPPED
+  COMPLETED
+  DISPUTED
+  REFUNDED
+  RELEASED
 }
 
 model Order {
   id           Int         @id @default(autoincrement())
   status       OrderStatus @default(PENDING)
-  cryptoAmount String      
-  txHash       String?     
+  cryptoAmount String
+  txHash       String?
 
   productId    Int
   product      Product     @relation(fields: [productId], references: [id])
