@@ -51,13 +51,16 @@ model Review {
   id          Int      @id @default(autoincrement())
   rating      Int      
   content     String   
+  isHidden    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   reviewerId  Int      
   revieweeId  Int      
+  orderId      Int?     @unique
 
   reviewer    User     @relation("SentReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
   reviewee    User     @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+  order       Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 enum OrderStatus {
@@ -84,6 +87,7 @@ model Order {
 
   sellerId     Int
   seller       User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  reviews      Review[]
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt

@@ -1,62 +1,99 @@
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
-// 1. 发表评价 (受保护接口)
-// POST /api/reviews
+const getCreditChange = (rating) => {
+    if (rating === 5) return 2;
+    if (rating === 4) return 1;
+    if (rating <= 2) return -5;
+    return 0;
+};
+
+const buildReviewSummary = (reviews) => {
+    const visibleReviews = reviews.filter((review) => !review.isHidden);
+    const averageRating = visibleReviews.length
+        ? Number((visibleReviews.reduce((sum, review) => sum + review.rating, 0) / visibleReviews.length).toFixed(1))
+        : 0;
+
+    return {
+        averageRating,
+        reviewsCount: visibleReviews.length
+    };
+};
+
 export const createReview = async (req, res) => {
     try {
-        const reviewerId = req.user.userId; // 评价发起人（当前登录用户）
-        const { revieweeId, rating, content } = req.body;
+        const reviewerId = req.user.userId;
+        const { orderId, revieweeId, rating, content } = req.body;
+        const targetOrderId = Number(orderId);
+        const ratingNum = Number(rating);
 
-        const targetRevieweeId = parseInt(revieweeId);
-        const ratingNum = parseInt(rating);
-
-        // 🛑 安全校验一：评分范围必须在 1 ~ 5 之间
-        if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-            return res.status(400).json({ error: '非法参数：评分必须在 1 到 5 星之间' });
+        if (!targetOrderId) {
+            return res.status(400).json({ error: '缺少订单 ID，必须基于已完成订单评价' });
         }
 
-        // 🛑 安全校验二：绝对不允许自己给自己写评价
-        if (reviewerId === targetRevieweeId) {
-            return res.status(400).json({ error: '防刷提示：你不能给自己发表评价' });
+        if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+            return res.status(400).json({ error: '评分必须是 1 到 5 星之间的整数' });
         }
 
-        // 🛑 安全校验三：检查被评价的用户是否存在
-        const revieweeUser = await prisma.user.findUnique({ where: { id: targetRevieweeId } });
-        if (!revieweeUser) {
-            return res.status(404).json({ error: '目标用户不存在，无法评价' });
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: '评价内容不能为空' });
         }
 
-        // 📈 信用分奖惩机制算法
-        let creditChange = 0;
-        if (ratingNum === 5) {
-            creditChange = 2;  // 5星好评：信用分 +2
-        } else if (ratingNum === 4) {
-            creditChange = 1;  // 4星中好评：信用分 +1
-        } else if (ratingNum <= 2) {
-            creditChange = -5; // 1-2星差评：重罚信用分 -5
-        } // 3星不加不减
+        const order = await prisma.order.findUnique({
+            where: { id: targetOrderId },
+            include: {
+                product: true,
+                seller: { select: { id: true, nickname: true, email: true } }
+            }
+        });
 
-        // 🔄 使用 Prisma $transaction 确保原子性（要么全成功，要么全失败）
+        if (!order) {
+            return res.status(404).json({ error: '订单不存在' });
+        }
+
+        if (order.status !== 'COMPLETED') {
+            return res.status(400).json({ error: '只有已完成的订单才能评价' });
+        }
+
+        if (order.buyerId !== reviewerId) {
+            return res.status(403).json({ error: '只有该订单的买家才能评价卖家' });
+        }
+
+        if (revieweeId && Number(revieweeId) !== order.sellerId) {
+            return res.status(400).json({ error: '只能评价该订单中的卖家' });
+        }
+
+        const existingReview = await prisma.review.findUnique({
+            where: { orderId: targetOrderId }
+        });
+
+        if (existingReview) {
+            return res.status(400).json({ error: '该订单已经评价过，不能重复评价' });
+        }
+
+        const creditChange = getCreditChange(ratingNum);
+
         const [newReview, updatedUser] = await prisma.$transaction([
-            // 动作 A：创建评价记录
             prisma.review.create({
                 data: {
                     rating: ratingNum,
-                    content,
+                    content: content.trim(),
                     reviewerId,
-                    revieweeId: targetRevieweeId
+                    revieweeId: order.sellerId,
+                    orderId: order.id
                 },
                 include: {
-                    reviewer: { select: { nickname: true } } // 顺便把评价人的昵称带出来返回给前端
+                    reviewer: { select: { id: true, nickname: true } },
+                    reviewee: { select: { id: true, nickname: true, creditRating: true } },
+                    order: { include: { product: true } }
                 }
             }),
-            // 动作 B：动态更新被评价人的信用分
             prisma.user.update({
-                where: { id: targetRevieweeId },
+                where: { id: order.sellerId },
                 data: {
                     creditRating: {
-                        increment: creditChange // Prisma 原生支持自增/自减，防止并发覆盖
+                        increment: creditChange
                     }
                 }
             })
@@ -67,20 +104,15 @@ export const createReview = async (req, res) => {
             review: newReview,
             revieweeCurrentCredit: updatedUser.creditRating
         });
-
     } catch (error) {
         console.error('发表评价失败:', error);
         res.status(500).json({ error: '服务器内部错误', details: error.message });
     }
 };
 
-// 2. 获取指定用户的全部评价及信用详情 (开放接口)
-// GET /api/reviews/user/:id
 export const getUserReviews = async (req, res) => {
     try {
-        const userId = parseInt(req.params.id);
-
-        // 1. 先查出该用户的基本资料和当前信用分
+        const userId = Number(req.params.id);
         const userProfile = await prisma.user.findUnique({
             where: { id: userId },
             select: { id: true, nickname: true, email: true, creditRating: true }
@@ -90,23 +122,49 @@ export const getUserReviews = async (req, res) => {
             return res.status(404).json({ error: '未找到该用户' });
         }
 
-        // 2. 查出别人写给他的历史评价列表
         const reviews = await prisma.review.findMany({
-            where: { revieweeId: userId },
+            where: { revieweeId: userId, isHidden: false },
             include: {
-                reviewer: { select: { nickname: true } } // 显示是谁给写的评价
+                reviewer: { select: { id: true, nickname: true } },
+                order: { include: { product: { select: { id: true, title: true } } } }
             },
-            orderBy: { createdAt: 'desc' } // 按最新评价排序
+            orderBy: { createdAt: 'desc' }
         });
 
         res.json({
             user: userProfile,
-            reviewsCount: reviews.length,
+            ...buildReviewSummary(reviews),
             reviews
         });
-
     } catch (error) {
         console.error('获取用户评价失败:', error);
+        res.status(500).json({ error: '服务器内部错误' });
+    }
+};
+
+export const getUserReviewSummary = async (req, res) => {
+    try {
+        const userId = Number(req.params.id);
+        const userProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, nickname: true, email: true, creditRating: true }
+        });
+
+        if (!userProfile) {
+            return res.status(404).json({ error: '未找到该用户' });
+        }
+
+        const reviews = await prisma.review.findMany({
+            where: { revieweeId: userId, isHidden: false },
+            select: { rating: true, isHidden: true }
+        });
+
+        res.json({
+            user: userProfile,
+            ...buildReviewSummary(reviews)
+        });
+    } catch (error) {
+        console.error('获取信誉汇总失败:', error);
         res.status(500).json({ error: '服务器内部错误' });
     }
 };

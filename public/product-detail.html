@@ -39,7 +39,10 @@
 
                     <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm text-gray-600">
                         <div class="font-bold text-gray-800 mb-1">卖家信息</div>
-                        <div>{{ product.seller?.nickname || '未知卖家' }}</div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span>{{ product.seller?.nickname || '未知卖家' }}</span>
+                            <button v-if="product.seller?.id" @click="viewSellerProfile" class="text-indigo-600 font-bold hover:text-indigo-800">查看信誉</button>
+                        </div>
                         <div v-if="product.seller?.creditRating">信用分：{{ product.seller.creditRating }}</div>
                     </div>
 
@@ -125,11 +128,15 @@
                     }
                 };
 
+                const viewSellerProfile = () => {
+                    window.location.href = `user-profile.html?id=${product.value.seller.id}`;
+                };
+
                 const goHome = () => {
                     window.location.href = 'index.html';
                 };
 
-                return { product, loading, error, buyProduct, goHome };
+                return { product, loading, error, buyProduct, viewSellerProfile, goHome };
             }
         }).mount('#app');
     </script>

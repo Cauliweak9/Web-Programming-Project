@@ -1,12 +1,20 @@
 import express from 'express';
-import { getAllOrdersForAdmin, arbitrateOrder } from '../controllers/admin.controller.js';
-import { verifyToken } from '../middlewares/auth.middleware.js';
-import { verifyAdmin } from '../middlewares/auth.middleware.js';
+import {
+    arbitrateOrder,
+    deleteReviewForAdmin,
+    getAllOrdersForAdmin,
+    getAllReviewsForAdmin,
+    hideReviewForAdmin
+} from '../controllers/admin.controller.js';
+import { verifyAdmin, verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// 所有的管理员接口都必须过两道关卡：1. 登录了 2. 角色是 ADMIN
 router.get('/orders', verifyToken, verifyAdmin, getAllOrdersForAdmin);
 router.post('/orders/:orderId/arbitrate', verifyToken, verifyAdmin, arbitrateOrder);
+
+router.get('/reviews', verifyToken, verifyAdmin, getAllReviewsForAdmin);
+router.patch('/reviews/:reviewId/hide', verifyToken, verifyAdmin, hideReviewForAdmin);
+router.delete('/reviews/:reviewId', verifyToken, verifyAdmin, deleteReviewForAdmin);
 
 export default router;

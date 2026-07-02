@@ -57,3 +57,60 @@ export const arbitrateOrder = async (req, res) => {
         return res.status(500).json({ error: "仲裁执行失败" });
     }
 };
+
+export const getAllReviewsForAdmin = async (req, res) => {
+    try {
+        const reviews = await prisma.review.findMany({
+            include: {
+                reviewer: { select: { id: true, nickname: true, email: true } },
+                reviewee: { select: { id: true, nickname: true, email: true, creditRating: true } },
+                order: {
+                    include: {
+                        product: { select: { id: true, title: true, priceFiat: true } }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return res.status(200).json(reviews);
+    } catch (error) {
+        console.error('获取评价管理列表失败:', error);
+        return res.status(500).json({ error: '获取评价管理列表失败' });
+    }
+};
+
+export const hideReviewForAdmin = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+        const { isHidden = true } = req.body;
+
+        const review = await prisma.review.update({
+            where: { id: Number(reviewId) },
+            data: { isHidden: Boolean(isHidden) }
+        });
+
+        return res.status(200).json({
+            message: review.isHidden ? '评价已隐藏' : '评价已恢复显示',
+            review
+        });
+    } catch (error) {
+        console.error('隐藏评价失败:', error);
+        return res.status(500).json({ error: '隐藏评价失败' });
+    }
+};
+
+export const deleteReviewForAdmin = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+
+        await prisma.review.delete({
+            where: { id: Number(reviewId) }
+        });
+
+        return res.status(200).json({ message: '评价已删除' });
+    } catch (error) {
+        console.error('删除评价失败:', error);
+        return res.status(500).json({ error: '删除评价失败' });
+    }
+};

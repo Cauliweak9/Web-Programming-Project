@@ -13,6 +13,7 @@
             <div class="space-x-4">
                 <button @click="goToMyProducts" class="hover:text-indigo-200 transition">我的发布</button>
                 <button @click="goToDashboard" class="hover:text-indigo-200 transition">我的订单</button>
+                <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200 transition">后台管理</button>
                 <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded shadow hover:bg-red-600 transition">退出登录</button>
             </div>
         </nav>
@@ -72,6 +73,10 @@
                                 <span>{{ p.category }}</span>
                                 <span>{{ p.condition }}</span>
                             </div>
+                            <div class="text-sm text-gray-500 mb-4">
+                                卖家：{{ p.seller?.nickname || '未知卖家' }}
+                                <button v-if="p.seller?.id" @click="viewSellerProfile(p.seller.id)" class="ml-2 text-indigo-600 font-bold hover:text-indigo-800">查看信誉</button>
+                            </div>
 
                             <div class="flex justify-between items-end gap-3">
                                 <div>
@@ -103,6 +108,7 @@
                 const token = localStorage.getItem('jwt_token');
                 const products = ref([]);
                 const pubError = ref('');
+                const isAdmin = ref(false);
                 const filters = ref({ keyword: '', category: '', minPrice: '', maxPrice: '' });
                 const newProduct = ref({
                     title: '',
@@ -129,8 +135,18 @@
                         window.location.href = 'login.html';
                         return;
                     }
+                    checkAdminAccess();
                     fetchProducts();
                 });
+
+                const checkAdminAccess = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/admin/orders`, { headers: authHeaders });
+                        isAdmin.value = res.ok;
+                    } catch (e) {
+                        isAdmin.value = false;
+                    }
+                };
 
                 const fetchProducts = async () => {
                     try {
@@ -222,15 +238,22 @@
                     window.location.href = `product-detail.html?id=${id}`;
                 };
 
+                const viewSellerProfile = (sellerId) => {
+                    if (!sellerId) return;
+                    window.location.href = `user-profile.html?id=${sellerId}`;
+                };
+
                 const logout = () => {
                     localStorage.removeItem('jwt_token');
                     window.location.href = 'login.html';
                 };
                 const goToDashboard = () => { window.location.href = 'dashboard.html'; };
                 const goToMyProducts = () => { window.location.href = 'my-products.html'; };
+                const goToAdmin = () => { window.location.href = 'admin.html'; };
 
                 return {
                     products,
+                    isAdmin,
                     newProduct,
                     pubError,
                     filters,
@@ -240,10 +263,12 @@
                     resetFilters,
                     buyProduct,
                     viewDetail,
+                    viewSellerProfile,
                     handleImageError,
                     logout,
                     goToDashboard,
-                    goToMyProducts
+                    goToMyProducts,
+                    goToAdmin
                 };
             }
         }).mount('#app');

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户信誉主页 - Web3 Escrow</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app">
+        <nav class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider">用户信誉主页</h1>
+            <button @click="goHome" class="bg-white/15 px-4 py-1.5 rounded hover:bg-white/25 transition">返回首页</button>
+        </nav>
+
+        <main class="container mx-auto p-6 max-w-4xl">
+            <div v-if="loading" class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-500">正在加载信誉信息...</div>
+            <div v-else-if="error" class="bg-white rounded-xl shadow-sm p-10 text-center text-red-500">{{ error }}</div>
+
+            <template v-else>
+                <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <h2 class="text-3xl font-black text-gray-900">{{ profile.user.nickname }}</h2>
+                    <p class="text-gray-500 mt-1">{{ profile.user.email }}</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                        <div class="bg-indigo-50 rounded-lg p-4">
+                            <div class="text-sm text-indigo-700 font-bold">信用分</div>
+                            <div class="text-3xl font-black text-indigo-900">{{ profile.user.creditRating }}</div>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4">
+                            <div class="text-sm text-yellow-700 font-bold">平均星级</div>
+                            <div class="text-3xl font-black text-yellow-700">{{ profile.averageRating || 0 }} ★</div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <div class="text-sm text-green-700 font-bold">评价数量</div>
+                            <div class="text-3xl font-black text-green-900">{{ profile.reviewsCount }}</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-4">
+                    <div v-if="profile.reviews.length === 0" class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-500">
+                        暂无公开评价
+                    </div>
+                    <div v-for="review in profile.reviews" :key="review.id" class="bg-white rounded-xl shadow-sm p-5">
+                        <div class="flex justify-between items-start gap-4">
+                            <div>
+                                <div class="text-yellow-400 text-xl">{{ stars(review.rating) }}</div>
+                                <p class="text-gray-700 mt-2 whitespace-pre-wrap">{{ review.content }}</p>
+                                <p class="text-sm text-gray-400 mt-3">
+                                    来自 {{ review.reviewer?.nickname || '匿名用户' }}
+                                    <span v-if="review.order?.product"> · {{ review.order.product.title }}</span>
+                                </p>
+                            </div>
+                            <div class="text-xs text-gray-400 shrink-0">{{ formatDate(review.createdAt) }}</div>
+                        </div>
+                    </div>
+                </section>
+            </template>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const API_BASE = window.location.origin;
+
+        createApp({
+            setup() {
+                const profile = ref(null);
+                const loading = ref(true);
+                const error = ref('');
+                const id = new URLSearchParams(window.location.search).get('id');
+
+                onMounted(fetchProfile);
+
+                async function fetchProfile() {
+                    if (!id) {
+                        error.value = '缺少用户 ID';
+                        loading.value = false;
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/reviews/user/${id}`);
+                        const data = await res.json();
+                        if (!res.ok) {
+                            error.value = data.error || '用户不存在';
+                            return;
+                        }
+                        profile.value = data;
+                    } catch (e) {
+                        error.value = '网络错误，无法加载信誉信息';
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                const stars = (rating) => '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                const formatDate = (date) => new Date(date).toLocaleString();
+                const goHome = () => { window.location.href = 'index.html'; };
+
+                return { profile, loading, error, stars, formatDate, goHome };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

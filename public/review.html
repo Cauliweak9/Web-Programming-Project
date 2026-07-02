@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>评价卖家 - Web3 Escrow</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app">
+        <nav class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider">评价卖家</h1>
+            <button @click="goBack" class="bg-white/15 px-4 py-1.5 rounded hover:bg-white/25 transition">返回订单</button>
+        </nav>
+
+        <main class="container mx-auto p-6 max-w-3xl">
+            <div v-if="loading" class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-500">正在加载订单...</div>
+            <div v-else-if="error" class="bg-white rounded-xl shadow-sm p-10 text-center text-red-500">{{ error }}</div>
+
+            <div v-else-if="submitted" class="bg-white rounded-xl shadow-md p-6 text-center">
+                <h2 class="text-2xl font-black text-gray-900 mb-3">评价提交成功</h2>
+                <p class="text-gray-500 mb-6">卖家的信用分和评价列表已更新。</p>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button v-if="order?.sellerId" @click="viewSellerProfile" class="bg-indigo-600 text-white font-bold px-5 py-2 rounded hover:bg-indigo-700 transition">
+                        查看卖家信誉
+                    </button>
+                    <button @click="goBack" class="bg-gray-200 text-gray-700 font-bold px-5 py-2 rounded hover:bg-gray-300 transition">
+                        返回订单
+                    </button>
+                </div>
+            </div>
+
+            <div v-else class="bg-white rounded-xl shadow-md p-6">
+                <div class="border-b pb-4 mb-6">
+                    <div class="text-sm text-gray-400 font-bold">订单 #{{ order.id }}</div>
+                    <h2 class="text-2xl font-black text-gray-900 mt-2">{{ order.product?.title || '未知商品' }}</h2>
+                    <p class="text-sm text-gray-500 mt-1">卖家 ID：{{ order.sellerId }}</p>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">星级评分</label>
+                    <div class="flex gap-2">
+                        <button v-for="star in 5" :key="star" @click="rating = star" class="text-4xl leading-none" :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'">
+                            ★
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">文字评价</label>
+                    <textarea v-model="content" rows="5" class="w-full p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="说说这次交易体验"></textarea>
+                </div>
+
+                <p class="text-red-500 text-sm mb-4">{{ submitError }}</p>
+                <button @click="submitReview" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg hover:bg-indigo-700 transition">
+                    提交评价
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const API_BASE = window.location.origin;
+
+        createApp({
+            setup() {
+                const token = localStorage.getItem('jwt_token');
+                const orderId = new URLSearchParams(window.location.search).get('orderId');
+                const order = ref(null);
+                const rating = ref(5);
+                const content = ref('');
+                const loading = ref(true);
+                const error = ref('');
+                const submitError = ref('');
+                const myUserId = ref(null);
+                const submitted = ref(false);
+
+                const authHeaders = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+
+                onMounted(() => {
+                    if (!token) {
+                        alert('请先登录');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    try {
+                        myUserId.value = JSON.parse(atob(token.split('.')[1])).userId;
+                    } catch (e) {
+                        error.value = '登录信息解析失败';
+                    }
+                    fetchOrder();
+                });
+
+                const fetchOrder = async () => {
+                    if (!orderId) {
+                        error.value = '缺少订单 ID';
+                        loading.value = false;
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/orders`, { headers: authHeaders });
+                        const data = await res.json();
+                        const found = (data.orders || data || []).find((item) => String(item.id) === String(orderId));
+
+                        if (!found) {
+                            error.value = '订单不存在或无权访问';
+                            return;
+                        }
+                        if (found.buyerId !== myUserId.value) {
+                            error.value = '只有买家可以评价卖家';
+                            return;
+                        }
+                        if (found.status !== 'COMPLETED') {
+                            error.value = '只有已完成订单才能评价';
+                            return;
+                        }
+                        if ((found.reviews || []).some((review) => review.reviewerId === myUserId.value)) {
+                            error.value = '该订单已经评价过';
+                            return;
+                        }
+
+                        order.value = found;
+                    } catch (e) {
+                        error.value = '网络错误，无法加载订单';
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const submitReview = async () => {
+                    submitError.value = '';
+                    if (!content.value.trim()) {
+                        submitError.value = '请填写评价内容';
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/reviews`, {
+                            method: 'POST',
+                            headers: authHeaders,
+                            body: JSON.stringify({
+                                orderId: order.value.id,
+                                revieweeId: order.value.sellerId,
+                                rating: rating.value,
+                                content: content.value
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            submitError.value = data.error || '提交失败';
+                            return;
+                        }
+                        submitted.value = true;
+                    } catch (e) {
+                        submitError.value = '网络错误';
+                    }
+                };
+
+                const viewSellerProfile = () => {
+                    if (!order.value?.sellerId) return;
+                    window.location.href = `user-profile.html?id=${order.value.sellerId}`;
+                };
+
+                const goBack = () => {
+                    window.location.href = 'dashboard.html';
+                };
+
+                return { order, rating, content, loading, error, submitError, submitted, submitReview, viewSellerProfile, goBack };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

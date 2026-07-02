@@ -88,7 +88,15 @@ export const getUserOrders = async (req, res) => {
             },
             // 把商品详情带上，方便前端展示
             include: {
-                product: true
+                product: true,
+                reviews: {
+                    select: {
+                        id: true,
+                        reviewerId: true,
+                        revieweeId: true,
+                        orderId: true
+                    }
+                }
             },
             // 按时间倒序，最新的订单在最前面
             orderBy: {
