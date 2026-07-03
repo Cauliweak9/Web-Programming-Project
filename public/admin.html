@@ -1,238 +1,165 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>后台管理 - Web3 Escrow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console - Campus Trade</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 min-h-screen text-gray-200">
     <div id="app">
-        <nav class="bg-black border-b border-yellow-600 p-4 shadow-lg flex justify-between items-center">
-            <h1 class="text-2xl font-black text-yellow-500 tracking-widest">SUPER ADMIN CONSOLE</h1>
-            <div class="space-x-4">
-                <button @click="goToMarket" class="text-gray-400 hover:text-white transition">返回前台</button>
-                <button @click="logout" class="bg-red-600 text-white px-4 py-1.5 rounded shadow hover:bg-red-700 transition">退出登录</button>
+        <nav class="bg-black border-b border-yellow-600 p-4 shadow flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <h1 class="text-2xl font-black text-yellow-500 tracking-widest">ADMIN CONSOLE</h1>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <button @click="goToMarket" class="text-gray-400 hover:text-white">Market</button>
+                <button @click="goToOrders" class="text-gray-400 hover:text-white">My Orders</button>
+                <button @click="goToApiDemo" class="text-gray-400 hover:text-white">Open API Demo</button>
+                <button @click="goToSkillDemo" class="text-gray-400 hover:text-white">Skill Demo</button>
+                <button @click="logout" class="bg-red-600 text-white px-4 py-1.5 rounded">Logout</button>
             </div>
         </nav>
 
-        <div class="container mx-auto p-6 max-w-7xl mt-6 space-y-10">
-            <section>
-                <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">数据统计</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-                        <div class="text-gray-400 text-sm">用户数</div>
-                        <div class="text-3xl font-black text-white">{{ stats.usersCount || 0 }}</div>
+        <main class="container mx-auto p-6 max-w-7xl mt-6 space-y-10">
+            <div v-if="authError" class="bg-red-900/40 border border-red-700 text-red-200 rounded-xl p-6">
+                {{ authError }}
+                <button @click="goToMarket" class="ml-3 underline">Back to market</button>
+            </div>
+
+            <template v-else>
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">Statistics</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700"><div class="text-gray-400 text-sm">Users</div><div class="text-3xl font-black text-white">{{ stats.usersCount || 0 }}</div></div>
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700"><div class="text-gray-400 text-sm">Products</div><div class="text-3xl font-black text-white">{{ stats.productsCount || 0 }}</div></div>
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700"><div class="text-gray-400 text-sm">Orders</div><div class="text-3xl font-black text-white">{{ stats.ordersCount || 0 }}</div></div>
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700"><div class="text-gray-400 text-sm">Completed Amount</div><div class="text-3xl font-black text-yellow-400">¥{{ stats.completedTradeAmount || 0 }}</div></div>
                     </div>
-                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-                        <div class="text-gray-400 text-sm">商品数</div>
-                        <div class="text-3xl font-black text-white">{{ stats.productsCount || 0 }}</div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">User Management</h2>
+                    <div class="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700">
+                        <table class="w-full text-left">
+                            <thead><tr class="bg-gray-900 text-gray-400 text-sm"><th class="p-4">ID</th><th class="p-4">Email</th><th class="p-4">Nickname</th><th class="p-4">Role</th><th class="p-4">Credit</th><th class="p-4">Status</th><th class="p-4 text-center">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="user in users" :key="user.id" class="hover:bg-gray-700">
+                                    <td class="p-4 font-mono text-yellow-500">#{{ user.id }}</td>
+                                    <td class="p-4">{{ user.email }}</td>
+                                    <td class="p-4">{{ user.nickname }}</td>
+                                    <td class="p-4">{{ user.role }}</td>
+                                    <td class="p-4">{{ user.creditRating }}</td>
+                                    <td class="p-4">{{ user.isBanned ? 'Banned' : 'Normal' }}</td>
+                                    <td class="p-4 flex justify-center gap-2">
+                                        <button v-if="!user.isBanned" @click="banUser(user)" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded">Ban</button>
+                                        <button v-else @click="unbanUser(user)" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded">Unban</button>
+                                        <button @click="resetPassword(user)" class="bg-yellow-600 text-white text-xs px-3 py-1.5 rounded">Reset Password</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-                        <div class="text-gray-400 text-sm">订单数</div>
-                        <div class="text-3xl font-black text-white">{{ stats.ordersCount || 0 }}</div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">Product Management</h2>
+                    <div class="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700">
+                        <table class="w-full text-left">
+                            <thead><tr class="bg-gray-900 text-gray-400 text-sm"><th class="p-4">ID</th><th class="p-4">Title</th><th class="p-4">Category</th><th class="p-4">Price</th><th class="p-4">Seller</th><th class="p-4">Available</th><th class="p-4 text-center">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="product in products" :key="product.id" class="hover:bg-gray-700">
+                                    <td class="p-4 font-mono text-yellow-500">#{{ product.id }}</td>
+                                    <td class="p-4">{{ product.title }}</td>
+                                    <td class="p-4">{{ product.category }}</td>
+                                    <td class="p-4">¥{{ product.priceFiat }}</td>
+                                    <td class="p-4">{{ product.seller?.nickname || product.seller?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ product.isAvailable ? 'Yes' : 'No' }}</td>
+                                    <td class="p-4 flex justify-center gap-2">
+                                        <button @click="takedownProduct(product)" class="bg-yellow-600 text-white text-xs px-3 py-1.5 rounded">Takedown</button>
+                                        <button @click="deleteProduct(product)" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded">Delete</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-                        <div class="text-gray-400 text-sm">已完成交易额</div>
-                        <div class="text-3xl font-black text-yellow-400">¥{{ stats.completedTradeAmount || 0 }}</div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">Order Arbitration</h2>
+                    <div class="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700">
+                        <table class="w-full text-left">
+                            <thead><tr class="bg-gray-900 text-gray-400 text-sm"><th class="p-4">ID</th><th class="p-4">Product</th><th class="p-4">Buyer</th><th class="p-4">Seller</th><th class="p-4">Status</th><th class="p-4 text-center">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-700">
+                                    <td class="p-4 font-mono text-yellow-500">#{{ order.id }}</td>
+                                    <td class="p-4">{{ order.product?.title || 'Unknown product' }}</td>
+                                    <td class="p-4">{{ order.buyer?.nickname || order.buyer?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ order.seller?.nickname || order.seller?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ order.status }}</td>
+                                    <td class="p-4 flex justify-center gap-2">
+                                        <template v-if="order.status === 'DISPUTED'">
+                                            <button @click="arbitrate(order.id, 'RELEASE')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded">Release</button>
+                                            <button @click="arbitrate(order.id, 'REFUND')" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded">Refund</button>
+                                        </template>
+                                        <span v-else class="text-gray-500 text-xs italic">No action</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <section>
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">用户管理</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ users.length }} 人</span>
-                </div>
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">邮箱</th>
-                                <th class="p-4">昵称</th>
-                                <th class="p-4">角色</th>
-                                <th class="p-4">信用分</th>
-                                <th class="p-4">状态</th>
-                                <th class="p-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-700">
-                                <td class="p-4 font-mono text-yellow-500">#{{ user.id }}</td>
-                                <td class="p-4">{{ user.email }}</td>
-                                <td class="p-4">{{ user.nickname }}</td>
-                                <td class="p-4">{{ user.role }}</td>
-                                <td class="p-4">{{ user.creditRating }}</td>
-                                <td class="p-4">
-                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="user.isBanned ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'">
-                                        {{ user.isBanned ? '已封禁' : '正常' }}
-                                    </span>
-                                </td>
-                                <td class="p-4 flex justify-center gap-2">
-                                    <button v-if="!user.isBanned" @click="banUser(user)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">封禁</button>
-                                    <button v-else @click="unbanUser(user)" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">解封</button>
-                                    <button @click="resetPassword(user)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">重置密码</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">Reports</h2>
+                    <div class="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700">
+                        <table class="w-full text-left">
+                            <thead><tr class="bg-gray-900 text-gray-400 text-sm"><th class="p-4">ID</th><th class="p-4">Product</th><th class="p-4">Reason</th><th class="p-4">Reporter</th><th class="p-4">Status</th><th class="p-4 text-center">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="report in reports" :key="report.id" class="hover:bg-gray-700">
+                                    <td class="p-4 font-mono text-yellow-500">#{{ report.id }}</td>
+                                    <td class="p-4">{{ report.product?.title || 'Unknown product' }}</td>
+                                    <td class="p-4 max-w-md">{{ report.reason }}</td>
+                                    <td class="p-4">{{ report.reporter?.nickname || report.reporter?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ report.status }}</td>
+                                    <td class="p-4 text-center">
+                                        <button v-if="report.status === 'PENDING'" @click="resolveReport(report)" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded">Resolve</button>
+                                        <span v-else class="text-gray-500 text-xs italic">Resolved</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
-            <section>
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">商品管理</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ products.length }} 件</span>
-                </div>
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">标题</th>
-                                <th class="p-4">分类</th>
-                                <th class="p-4">价格</th>
-                                <th class="p-4">卖家</th>
-                                <th class="p-4">状态</th>
-                                <th class="p-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="product in products" :key="product.id" class="hover:bg-gray-700">
-                                <td class="p-4 font-mono text-yellow-500">#{{ product.id }}</td>
-                                <td class="p-4">{{ product.title }}</td>
-                                <td class="p-4">{{ product.category }}</td>
-                                <td class="p-4">¥{{ product.priceFiat }}</td>
-                                <td class="p-4">{{ product.seller?.nickname || '未知' }}</td>
-                                <td class="p-4">
-                                    <span class="px-2 py-1 rounded text-xs font-bold" :class="product.isAvailable ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'">
-                                        {{ product.isAvailable ? '在售' : '已下架' }}
-                                    </span>
-                                </td>
-                                <td class="p-4 flex justify-center gap-2">
-                                    <button @click="takedownProduct(product)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">下架</button>
-                                    <button @click="deleteProduct(product)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">删除</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">订单仲裁</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ orders.length }} 单</span>
-                </div>
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">订单ID</th>
-                                <th class="p-4">商品</th>
-                                <th class="p-4">买家</th>
-                                <th class="p-4">卖家</th>
-                                <th class="p-4">状态</th>
-                                <th class="p-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-700">
-                                <td class="p-4 font-mono text-yellow-500">#{{ order.id }}</td>
-                                <td class="p-4">{{ order.product?.title || '未知商品' }}</td>
-                                <td class="p-4">{{ order.buyer?.nickname || '未知' }}</td>
-                                <td class="p-4">{{ order.seller?.nickname || '未知' }}</td>
-                                <td class="p-4">{{ order.status }}</td>
-                                <td class="p-4 flex justify-center gap-2">
-                                    <template v-if="order.status === 'DISPUTED'">
-                                        <button @click="arbitrate(order.id, 'RELEASE')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">放款</button>
-                                        <button @click="arbitrate(order.id, 'REFUND')" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">退款</button>
-                                    </template>
-                                    <span v-else class="text-gray-500 text-xs italic">不可干预</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">举报处理</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ reports.length }} 条</span>
-                </div>
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">商品</th>
-                                <th class="p-4">原因</th>
-                                <th class="p-4">举报人</th>
-                                <th class="p-4">状态</th>
-                                <th class="p-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="report in reports" :key="report.id" class="hover:bg-gray-700">
-                                <td class="p-4 font-mono text-yellow-500">#{{ report.id }}</td>
-                                <td class="p-4">{{ report.product?.title || '未知商品' }}</td>
-                                <td class="p-4 max-w-md">{{ report.reason }}</td>
-                                <td class="p-4">{{ report.reporter?.nickname || '未知' }}</td>
-                                <td class="p-4">{{ report.status }}</td>
-                                <td class="p-4 text-center">
-                                    <button v-if="report.status === 'PENDING'" @click="resolveReport(report)" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded">标记已处理</button>
-                                    <span v-else class="text-gray-500 text-xs italic">已处理</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3">评价管理</h2>
-                    <span class="text-sm bg-yellow-500 text-black px-3 py-1 rounded font-bold">{{ reviews.length }} 条</span>
-                </div>
-                <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-900 text-gray-400 text-sm border-b border-gray-700">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">评分</th>
-                                <th class="p-4">内容</th>
-                                <th class="p-4">评价人</th>
-                                <th class="p-4">被评价人</th>
-                                <th class="p-4">状态</th>
-                                <th class="p-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="review in reviews" :key="review.id" class="hover:bg-gray-700">
-                                <td class="p-4 font-mono text-yellow-500">#{{ review.id }}</td>
-                                <td class="p-4 text-yellow-400">{{ stars(review.rating) }}</td>
-                                <td class="p-4 max-w-md">{{ review.content }}</td>
-                                <td class="p-4">{{ review.reviewer?.nickname || '未知' }}</td>
-                                <td class="p-4">{{ review.reviewee?.nickname || '未知' }}</td>
-                                <td class="p-4">{{ review.isHidden ? '已隐藏' : '公开' }}</td>
-                                <td class="p-4 flex justify-center gap-2">
-                                    <button @click="toggleReviewHidden(review)" class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-3 py-1.5 rounded">{{ review.isHidden ? '恢复' : '隐藏' }}</button>
-                                    <button @click="deleteReview(review)" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded">删除</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+                <section>
+                    <h2 class="text-xl font-bold text-white border-l-4 border-yellow-500 pl-3 mb-5">Review Management</h2>
+                    <div class="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700">
+                        <table class="w-full text-left">
+                            <thead><tr class="bg-gray-900 text-gray-400 text-sm"><th class="p-4">ID</th><th class="p-4">Rating</th><th class="p-4">Content</th><th class="p-4">Reviewer</th><th class="p-4">Reviewee</th><th class="p-4">Hidden</th><th class="p-4 text-center">Actions</th></tr></thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="review in reviews" :key="review.id" class="hover:bg-gray-700">
+                                    <td class="p-4 font-mono text-yellow-500">#{{ review.id }}</td>
+                                    <td class="p-4 text-yellow-400">{{ stars(review.rating) }}</td>
+                                    <td class="p-4 max-w-md">{{ review.content }}</td>
+                                    <td class="p-4">{{ review.reviewer?.nickname || review.reviewer?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ review.reviewee?.nickname || review.reviewee?.email || 'Unknown' }}</td>
+                                    <td class="p-4">{{ review.isHidden ? 'Yes' : 'No' }}</td>
+                                    <td class="p-4 flex justify-center gap-2">
+                                        <button @click="toggleReviewHidden(review)" class="bg-yellow-600 text-white text-xs px-3 py-1.5 rounded">{{ review.isHidden ? 'Show' : 'Hide' }}</button>
+                                        <button @click="deleteReview(review)" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded">Delete</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </template>
+        </main>
     </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
         const API_BASE = window.location.origin;
-
         createApp({
             setup() {
                 const token = localStorage.getItem('jwt_token');
@@ -240,146 +167,60 @@
                 const users = ref([]);
                 const products = ref([]);
                 const orders = ref([]);
-                const reviews = ref([]);
                 const reports = ref([]);
+                const reviews = ref([]);
+                const authError = ref('');
+                const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
-                const authHeaders = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                };
-
-                onMounted(async () => {
-                    if (!token) {
-                        alert('无权访问，请先登录');
-                        window.location.href = 'login.html';
-                        return;
-                    }
-                    await refreshAll();
+                onMounted(() => {
+                    if (!token) { authError.value = 'No permission. Please login as admin.'; return; }
+                    let role = localStorage.getItem('role');
+                    try { role = JSON.parse(localStorage.getItem('user') || '{}').role || role; } catch (e) {}
+                    if (role !== 'ADMIN') { authError.value = 'No permission. Admin role required.'; return; }
+                    loadAll();
                 });
 
                 const api = async (url, options = {}) => {
-                    const res = await fetch(`${API_BASE}${url}`, {
-                        ...options,
-                        headers: { ...authHeaders, ...(options.headers || {}) }
-                    });
+                    const res = await fetch(`${API_BASE}${url}`, { ...options, headers: { ...headers, ...(options.headers || {}) } });
                     const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(data.error || '操作失败');
-                    }
+                    if (!res.ok) throw new Error(data.error || 'Request failed.');
                     return data;
                 };
-
-                const refreshAll = async () => {
+                const loadAll = async () => {
                     try {
-                        const [statsData, usersData, productsData, ordersData, reviewsData, reportsData] = await Promise.all([
+                        const [s, u, p, o, rp, rv] = await Promise.all([
                             api('/api/admin/stats'),
                             api('/api/admin/users'),
                             api('/api/admin/products'),
                             api('/api/admin/orders'),
-                            api('/api/admin/reviews'),
-                            api('/api/admin/reports')
+                            api('/api/admin/reports'),
+                            api('/api/admin/reviews')
                         ]);
-                        stats.value = statsData;
-                        users.value = usersData;
-                        products.value = productsData;
-                        orders.value = ordersData;
-                        reviews.value = reviewsData;
-                        reports.value = reportsData;
-                    } catch (error) {
-                        alert(error.message || '无权限访问后台');
-                        window.location.href = 'index.html';
-                    }
+                        stats.value = s;
+                        users.value = u.users || u;
+                        products.value = p.products || p;
+                        orders.value = o.orders || o;
+                        reports.value = rp.reports || rp;
+                        reviews.value = rv.reviews || rv;
+                    } catch (e) { authError.value = e.message; }
                 };
-
-                const banUser = async (user) => {
-                    if (!confirm(`确认封禁 ${user.email} 吗？`)) return;
-                    await api(`/api/admin/users/${user.id}/ban`, { method: 'PATCH' });
-                    refreshAll();
-                };
-
-                const unbanUser = async (user) => {
-                    await api(`/api/admin/users/${user.id}/unban`, { method: 'PATCH' });
-                    refreshAll();
-                };
-
-                const resetPassword = async (user) => {
-                    if (!confirm(`确认将 ${user.email} 的密码重置为 123456 吗？`)) return;
-                    const data = await api(`/api/admin/users/${user.id}/reset-password`, { method: 'PATCH' });
-                    alert(data.message);
-                };
-
-                const takedownProduct = async (product) => {
-                    if (!confirm(`确认下架《${product.title}》吗？`)) return;
-                    await api(`/api/admin/products/${product.id}/takedown`, { method: 'PATCH' });
-                    refreshAll();
-                };
-
-                const deleteProduct = async (product) => {
-                    if (!confirm(`确认删除《${product.title}》吗？已有订单的商品不能删除。`)) return;
-                    try {
-                        await api(`/api/admin/products/${product.id}`, { method: 'DELETE' });
-                        refreshAll();
-                    } catch (error) {
-                        alert(error.message);
-                    }
-                };
-
-                const arbitrate = async (orderId, decision) => {
-                    const actionText = decision === 'RELEASE' ? '放款给卖家' : '退款给买家';
-                    if (!confirm(`确认将订单 #${orderId} ${actionText} 吗？`)) return;
-                    await api(`/api/admin/orders/${orderId}/arbitrate`, {
-                        method: 'POST',
-                        body: JSON.stringify({ decision })
-                    });
-                    refreshAll();
-                };
-
-                const resolveReport = async (report) => {
-                    await api(`/api/admin/reports/${report.id}/resolve`, { method: 'PATCH' });
-                    refreshAll();
-                };
-
-                const toggleReviewHidden = async (review) => {
-                    await api(`/api/admin/reviews/${review.id}/hide`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ isHidden: !review.isHidden })
-                    });
-                    refreshAll();
-                };
-
-                const deleteReview = async (review) => {
-                    if (!confirm(`确认删除评价 #${review.id} 吗？`)) return;
-                    await api(`/api/admin/reviews/${review.id}`, { method: 'DELETE' });
-                    refreshAll();
-                };
-
-                const stars = (rating) => '★'.repeat(rating) + '☆'.repeat(5 - rating);
-                const logout = () => {
-                    localStorage.removeItem('jwt_token');
-                    window.location.href = 'login.html';
-                };
+                const banUser = async (user) => { if (!confirm(`Ban ${user.email}?`)) return; await api(`/api/admin/users/${user.id}/ban`, { method: 'PATCH' }); loadAll(); };
+                const unbanUser = async (user) => { await api(`/api/admin/users/${user.id}/unban`, { method: 'PATCH' }); loadAll(); };
+                const resetPassword = async (user) => { if (!confirm(`Reset password for ${user.email} to 123456?`)) return; await api(`/api/admin/users/${user.id}/reset-password`, { method: 'PATCH' }); alert('Password reset to 123456.'); };
+                const takedownProduct = async (product) => { await api(`/api/admin/products/${product.id}/takedown`, { method: 'PATCH' }); loadAll(); };
+                const deleteProduct = async (product) => { if (!confirm(`Delete product ${product.title}?`)) return; await api(`/api/admin/products/${product.id}`, { method: 'DELETE' }); loadAll(); };
+                const arbitrate = async (orderId, action) => { await api(`/api/admin/orders/${orderId}/arbitrate`, { method: 'POST', body: JSON.stringify({ action }) }); loadAll(); };
+                const resolveReport = async (report) => { await api(`/api/admin/reports/${report.id}/resolve`, { method: 'PATCH' }); loadAll(); };
+                const toggleReviewHidden = async (review) => { await api(`/api/admin/reviews/${review.id}/hide`, { method: 'PATCH', body: JSON.stringify({ isHidden: !review.isHidden }) }); loadAll(); };
+                const deleteReview = async (review) => { if (!confirm(`Delete review #${review.id}?`)) return; await api(`/api/admin/reviews/${review.id}`, { method: 'DELETE' }); loadAll(); };
+                const stars = (rating) => '*'.repeat(rating) + '-'.repeat(5 - rating);
+                const logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
                 const goToMarket = () => { window.location.href = 'index.html'; };
+                const goToOrders = () => { window.location.href = 'dashboard.html'; };
+                const goToApiDemo = () => { window.location.href = 'third-party-demo.html'; };
+                const goToSkillDemo = () => { window.location.href = 'skill-demo.html'; };
 
-                return {
-                    stats,
-                    users,
-                    products,
-                    orders,
-                    reviews,
-                    reports,
-                    banUser,
-                    unbanUser,
-                    resetPassword,
-                    takedownProduct,
-                    deleteProduct,
-                    arbitrate,
-                    resolveReport,
-                    toggleReviewHidden,
-                    deleteReview,
-                    stars,
-                    logout,
-                    goToMarket
-                };
+                return { stats, users, products, orders, reports, reviews, authError, banUser, unbanUser, resetPassword, takedownProduct, deleteProduct, arbitrate, resolveReport, toggleReviewHidden, deleteReview, stars, logout, goToMarket, goToOrders, goToApiDemo, goToSkillDemo };
             }
         }).mount('#app');
     </script>

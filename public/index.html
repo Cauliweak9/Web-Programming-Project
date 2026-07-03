@@ -2,102 +2,102 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>交易大厅 - Web3 Escrow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>&#20132;&#26131;&#22823;&#21381; - &#26657;&#22253;&#20108;&#25163;&#20132;&#26131;&#24179;&#21488;</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <a href="/demo-hub.html"
+       style="position:fixed;right:20px;bottom:20px;z-index:9999;background:#4f46e5;color:white;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.18);">
+      &#21151;&#33021;&#23548;&#33322;
+    </a>
+
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wider">校园二手交易大厅</h1>
-            <div class="space-x-4">
-                <button @click="goToMyProducts" class="hover:text-indigo-200 transition">我的发布</button>
-                <button @click="goToDashboard" class="hover:text-indigo-200 transition">我的订单</button>
-                <button @click="goToApiDemo" class="hover:text-indigo-200 transition">开放 API 示例</button>
-                <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200 transition">后台管理</button>
-                <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded shadow hover:bg-red-600 transition">退出登录</button>
+        <nav class="bg-indigo-600 text-white p-4 shadow-md flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <h1 class="text-xl font-bold tracking-wider">&#26657;&#22253;&#20108;&#25163;&#20132;&#26131;&#24179;&#21488;</h1>
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+                <button @click="goHome" class="hover:text-indigo-200 transition">&#21830;&#21697;&#22823;&#21381;</button>
+                <button @click="goToPublish" class="hover:text-indigo-200 transition">&#21457;&#24067;&#21830;&#21697;</button>
+                <button @click="goToMyProducts" class="hover:text-indigo-200 transition">&#25105;&#30340;&#21457;&#24067;</button>
+                <button @click="goToDashboard" class="hover:text-indigo-200 transition">&#25105;&#30340;&#35746;&#21333;</button>
+                <button @click="goToApiDemo" class="hover:text-indigo-200 transition">&#24320;&#25918; API &#31034;&#20363;</button>
+                <button @click="goToSkillDemo" class="hover:text-indigo-200 transition">Skill &#31034;&#20363;</button>
+                <button @click="goToProfile" class="hover:text-indigo-200 transition">&#20010;&#20154;&#20449;&#24687;</button>
+                <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200 transition">&#21518;&#21488;&#31649;&#29702;</button>
+                <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded shadow hover:bg-red-600 transition">&#36864;&#20986;&#30331;&#24405;</button>
             </div>
         </nav>
 
-        <div class="container mx-auto p-6 flex flex-col lg:flex-row gap-8">
-            <div class="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-md h-fit border-t-4 border-indigo-500">
-                <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2">发布新商品</h2>
-                <input v-model="newProduct.title" class="w-full mb-3 p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="商品标题">
-                <textarea v-model="newProduct.description" class="w-full mb-3 p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="商品详细描述" rows="3"></textarea>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    <input v-model="newProduct.priceFiat" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="现价">
-                    <input v-model="newProduct.originalPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="原价">
-                    <input v-model="newProduct.category" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="分类">
-                    <input v-model="newProduct.condition" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="成色">
+        <main class="container mx-auto p-6 max-w-7xl">
+            <section class="bg-white p-5 rounded-xl shadow-sm mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">&#24066;&#22330;&#22312;&#21806;&#21830;&#21697;</h2>
+                    <button @click="goToPublish" class="bg-green-600 text-white font-bold px-4 py-2 rounded hover:bg-green-700 transition">&#21457;&#24067;&#26032;&#21830;&#21697;</button>
                 </div>
 
-                <input v-model="newProduct.imageUrl" class="w-full mb-5 p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="图片 URL">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input v-model="filters.keyword" @keyup.enter="searchProducts" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 md:col-span-2" placeholder="&#25628;&#32034;&#26631;&#39064;&#12289;&#25551;&#36848;&#25110;&#20998;&#31867;">
+                    <select v-model="filters.category" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                        <option value="">&#20840;&#37096;&#20998;&#31867;</option>
+                        <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
+                    </select>
+                    <button @click="searchProducts" class="bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 transition">&#25628;&#32034;</button>
+                    <input v-model="filters.minPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="&#26368;&#20302;&#20215;">
+                    <input v-model="filters.maxPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="&#26368;&#39640;&#20215;">
+                    <button @click="resetFilters" class="bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300 transition md:col-span-2">&#37325;&#32622;&#31579;&#36873;</button>
+                </div>
+            </section>
 
-                <button @click="publishProduct" class="w-full bg-green-500 text-white font-bold p-3 rounded hover:bg-green-600 transition shadow-lg">
-                    上架商品
-                </button>
-                <p class="mt-3 text-sm text-center text-red-500">{{ pubError }}</p>
+            <div v-if="products.length === 0" class="text-gray-500 text-center py-10 bg-white rounded-xl shadow-sm">
+                &#26242;&#26080;&#21830;&#21697;&#65292;&#25442;&#20010;&#31579;&#36873;&#26465;&#20214;&#35797;&#35797;&#65292;&#25110;&#32773;&#21457;&#24067;&#20320;&#30340;&#31532;&#19968;&#20010;&#21830;&#21697;&#12290;
             </div>
 
-            <div class="w-full lg:w-2/3">
-                <div class="bg-white p-5 rounded-xl shadow-sm mb-5">
-                    <h2 class="text-xl font-bold mb-4 text-gray-800">市场在售商品</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <input v-model="filters.keyword" @keyup.enter="fetchProducts" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 md:col-span-2" placeholder="搜索标题、描述或分类">
-                        <select v-model="filters.category" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400">
-                            <option value="">全部分类</option>
-                            <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-                        </select>
-                        <button @click="fetchProducts" class="bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 transition">搜索</button>
-                        <input v-model="filters.minPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="最低价">
-                        <input v-model="filters.maxPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="最高价">
-                        <button @click="resetFilters" class="bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300 transition md:col-span-2">重置筛选</button>
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <article v-for="p in products" :key="p.id" class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition">
+                    <div class="h-44 bg-gray-100">
+                        <img v-if="p.imageUrl" :src="p.imageUrl" :alt="p.title" class="w-full h-full object-cover" @error="handleImageError">
+                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">&#26242;&#26080;&#22270;&#29255;</div>
                     </div>
-                </div>
 
-                <div v-if="products.length === 0" class="text-gray-500 text-center py-10 bg-white rounded-xl shadow-sm">
-                    暂无商品，换个筛选条件试试，或者发布你的第一个商品。
-                </div>
+                    <div class="p-5">
+                        <h3 class="font-bold text-xl text-indigo-700 mb-1">{{ p.title }}</h3>
+                        <p class="text-gray-500 text-sm mb-3 line-clamp-2 h-10">{{ p.description }}</p>
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div v-for="p in products" :key="p.id" class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition">
-                        <div class="h-44 bg-gray-100">
-                            <img v-if="p.imageUrl" :src="p.imageUrl" :alt="p.title" class="w-full h-full object-cover" @error="handleImageError">
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400">暂无图片</div>
+                        <div class="flex justify-between items-center text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
+                            <span>{{ p.category }}</span>
+                            <span>{{ p.condition }}</span>
                         </div>
-                        <div class="p-5">
-                            <h3 class="font-bold text-xl text-indigo-700 mb-1">{{ p.title }}</h3>
-                            <p class="text-gray-500 text-sm mb-3 line-clamp-2 h-10">{{ p.description }}</p>
 
-                            <div class="flex justify-between items-center text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
-                                <span>{{ p.category }}</span>
-                                <span>{{ p.condition }}</span>
-                            </div>
-                            <div class="text-sm text-gray-500 mb-4">
-                                卖家：{{ p.seller?.nickname || '未知卖家' }}
-                                <button v-if="p.seller?.id" @click="viewSellerProfile(p.seller.id)" class="ml-2 text-indigo-600 font-bold hover:text-indigo-800">查看信誉</button>
-                            </div>
+                        <div class="text-sm text-gray-500 mb-4">
+                            &#21334;&#23478;&#65306;{{ p.seller?.nickname || '\u672a\u77e5\u5356\u5bb6' }}
+                            <button v-if="p.seller?.id" @click="viewSellerProfile(p.seller.id)" class="ml-2 text-indigo-600 font-bold hover:text-indigo-800">&#26597;&#30475;&#20449;&#35465;</button>
+                        </div>
 
-                            <div class="flex justify-between items-end gap-3">
-                                <div>
-                                    <div class="text-2xl font-black text-red-500">¥{{ p.priceFiat }}</div>
-                                    <div v-if="p.originalPrice" class="text-sm text-gray-400 line-through">原价 ¥{{ p.originalPrice }}</div>
-                                </div>
-                                <div class="flex gap-2 shrink-0">
-                                    <button @click="viewDetail(p.id)" class="bg-gray-100 text-gray-700 font-bold px-4 py-2 rounded-lg hover:bg-gray-200 transition">
-                                        查看详情
-                                    </button>
-                                    <button @click="buyProduct(p)" class="bg-indigo-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
-                                        立即购买
-                                    </button>
-                                </div>
+                        <div class="flex justify-between items-end gap-3">
+                            <div>
+                                <div class="text-2xl font-black text-red-500">&yen;{{ p.priceFiat }}</div>
+                                <div v-if="p.originalPrice" class="text-sm text-gray-400 line-through">&#21407;&#20215; &yen;{{ p.originalPrice }}</div>
+                            </div>
+                            <div class="flex gap-2 shrink-0">
+                                <button @click="viewDetail(p.id)" class="bg-gray-100 text-gray-700 font-bold px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                                    &#26597;&#30475;&#35814;&#24773;
+                                </button>
+                                <button @click="buyProduct(p)" class="bg-indigo-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                    &#31435;&#21363;&#36141;&#20080;
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
+                </article>
+            </section>
+
+            <div v-if="pageMeta.totalPages > 1" class="flex justify-center items-center gap-3 mt-6">
+                <button @click="prevPage" :disabled="pageMeta.page <= 1" class="bg-gray-200 disabled:opacity-50 text-gray-700 font-bold px-4 py-2 rounded hover:bg-gray-300">&#19978;&#19968;&#39029;</button>
+                <span class="text-sm text-gray-600">&#31532; {{ pageMeta.page }} / {{ pageMeta.totalPages }} &#39029;&#65292;&#20849; {{ pageMeta.total }} &#20214;&#21830;&#21697;</span>
+                <button @click="nextPage" :disabled="pageMeta.page >= pageMeta.totalPages" class="bg-gray-200 disabled:opacity-50 text-gray-700 font-bold px-4 py-2 rounded hover:bg-gray-300">&#19979;&#19968;&#39029;</button>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
@@ -108,46 +108,35 @@
             setup() {
                 const token = localStorage.getItem('jwt_token');
                 const products = ref([]);
-                const pubError = ref('');
                 const isAdmin = ref(false);
+                const pageMeta = ref({ total: 0, page: 1, limit: 8, totalPages: 1 });
                 const filters = ref({ keyword: '', category: '', minPrice: '', maxPrice: '' });
-                const newProduct = ref({
-                    title: '',
-                    description: '',
-                    priceFiat: '',
-                    originalPrice: '',
-                    category: '',
-                    condition: '',
-                    imageUrl: ''
-                });
 
                 const authHeaders = {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 };
 
                 const categories = computed(() => {
-                    return [...new Set(products.value.map((p) => p.category).filter(Boolean))];
+                    return [...new Set(products.value.map(p => p.category).filter(Boolean))];
                 });
 
                 onMounted(() => {
                     if (!token) {
-                        alert('请先登录');
+                        alert('\u8bf7\u5148\u767b\u5f55');
                         window.location.href = 'login.html';
                         return;
                     }
-                    checkAdminAccess();
+
+                    try {
+                        const user = JSON.parse(localStorage.getItem('user') || '{}');
+                        isAdmin.value = user.role === 'ADMIN';
+                    } catch (e) {
+                        isAdmin.value = localStorage.getItem('role') === 'ADMIN';
+                    }
+
                     fetchProducts();
                 });
-
-                const checkAdminAccess = async () => {
-                    try {
-                        const res = await fetch(`${API_BASE}/api/admin/orders`, { headers: authHeaders });
-                        isAdmin.value = res.ok;
-                    } catch (e) {
-                        isAdmin.value = false;
-                    }
-                };
 
                 const fetchProducts = async () => {
                     try {
@@ -155,58 +144,45 @@
                         Object.entries(filters.value).forEach(([key, value]) => {
                             if (value !== '') params.set(key, value);
                         });
-                        params.set('limit', '50');
+                        params.set('page', String(pageMeta.value.page));
+                        params.set('limit', String(pageMeta.value.limit));
 
                         const res = await fetch(`${API_BASE}/api/products?${params.toString()}`, { headers: authHeaders });
                         if (res.ok) {
                             const data = await res.json();
                             products.value = data.products || [];
+                            pageMeta.value = data.meta || pageMeta.value;
                         }
                     } catch (e) {
-                        console.error('获取商品失败', e);
+                        console.error('\u83b7\u53d6\u5546\u54c1\u5931\u8d25', e);
                     }
+                };
+
+                const searchProducts = () => {
+                    pageMeta.value.page = 1;
+                    fetchProducts();
                 };
 
                 const resetFilters = () => {
                     filters.value = { keyword: '', category: '', minPrice: '', maxPrice: '' };
+                    pageMeta.value.page = 1;
                     fetchProducts();
                 };
 
-                const publishProduct = async () => {
-                    pubError.value = '';
-                    if (!newProduct.value.title || !newProduct.value.description || !newProduct.value.category || !newProduct.value.priceFiat || !newProduct.value.condition) {
-                        pubError.value = '标题、描述、分类、价格和成色不能为空';
-                        return;
-                    }
+                const nextPage = () => {
+                    if (pageMeta.value.page >= pageMeta.value.totalPages) return;
+                    pageMeta.value.page += 1;
+                    fetchProducts();
+                };
 
-                    try {
-                        const payload = {
-                            ...newProduct.value,
-                            priceFiat: parseFloat(newProduct.value.priceFiat),
-                            originalPrice: newProduct.value.originalPrice ? parseFloat(newProduct.value.originalPrice) : null
-                        };
-
-                        const res = await fetch(`${API_BASE}/api/products`, {
-                            method: 'POST',
-                            headers: authHeaders,
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (res.ok) {
-                            alert('商品上架成功');
-                            newProduct.value = { title: '', description: '', priceFiat: '', originalPrice: '', category: '', condition: '', imageUrl: '' };
-                            fetchProducts();
-                        } else {
-                            const data = await res.json();
-                            pubError.value = data.error || '发布失败';
-                        }
-                    } catch (e) {
-                        pubError.value = '网络错误';
-                    }
+                const prevPage = () => {
+                    if (pageMeta.value.page <= 1) return;
+                    pageMeta.value.page -= 1;
+                    fetchProducts();
                 };
 
                 const buyProduct = async (product) => {
-                    if (!confirm(`确认购买商品《${product.title}》吗？`)) return;
+                    if (!confirm(`\u786e\u8ba4\u8d2d\u4e70\u5546\u54c1\u300a${product.title}\u300b\u5417\uff1f`)) return;
                     const simulatedCryptoAmount = parseFloat((product.priceFiat / 20000).toFixed(4)) || 0.1;
 
                     try {
@@ -220,19 +196,15 @@
                         });
 
                         if (res.ok) {
-                            alert('下单成功，即将跳转到订单中心。');
+                            alert('\u4e0b\u5355\u6210\u529f\uff0c\u5373\u5c06\u8df3\u8f6c\u5230\u8ba2\u5355\u4e2d\u5fc3\u3002');
                             window.location.href = 'dashboard.html';
                         } else {
                             const data = await res.json();
-                            alert(`下单失败: ${data.error}`);
+                            alert(`\u4e0b\u5355\u5931\u8d25: ${data.error}`);
                         }
                     } catch (e) {
-                        alert('网络错误');
+                        alert('\u7f51\u7edc\u9519\u8bef');
                     }
-                };
-
-                const handleImageError = (event) => {
-                    event.target.style.display = 'none';
                 };
 
                 const viewDetail = (id) => {
@@ -240,37 +212,57 @@
                 };
 
                 const viewSellerProfile = (sellerId) => {
-                    if (!sellerId) return;
+                    if (!sellerId) {
+                        alert('\u7f3a\u5c11\u5356\u5bb6 ID');
+                        return;
+                    }
                     window.location.href = `user-profile.html?id=${sellerId}`;
+                };
+
+                const handleImageError = (event) => {
+                    event.target.style.display = 'none';
                 };
 
                 const logout = () => {
                     localStorage.removeItem('jwt_token');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('role');
                     window.location.href = 'login.html';
                 };
+
+                const goHome = () => { window.location.href = 'index.html'; };
                 const goToDashboard = () => { window.location.href = 'dashboard.html'; };
                 const goToMyProducts = () => { window.location.href = 'my-products.html'; };
+                const goToPublish = () => { window.location.href = 'publish-product.html'; };
                 const goToApiDemo = () => { window.location.href = 'third-party-demo.html'; };
+                const goToSkillDemo = () => { window.location.href = 'skill-demo.html'; };
+                const goToProfile = () => { window.location.href = 'profile.html'; };
                 const goToAdmin = () => { window.location.href = 'admin.html'; };
 
                 return {
                     products,
                     isAdmin,
-                    newProduct,
-                    pubError,
                     filters,
+                    pageMeta,
                     categories,
-                    publishProduct,
                     fetchProducts,
+                    searchProducts,
                     resetFilters,
+                    nextPage,
+                    prevPage,
                     buyProduct,
                     viewDetail,
                     viewSellerProfile,
                     handleImageError,
                     logout,
+                    goHome,
                     goToDashboard,
                     goToMyProducts,
+                    goToPublish,
                     goToApiDemo,
+                    goToSkillDemo,
+                    goToProfile,
                     goToAdmin
                 };
             }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信誉评估 Skill 调用示例</title>
+    <title>Credit Evaluation Skill Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
@@ -11,22 +11,24 @@
     <div id="app" class="max-w-5xl mx-auto px-4 py-8">
         <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
-                <h1 class="text-3xl font-black text-indigo-900">信誉评估 Skill 调用示例</h1>
-                <p class="text-slate-600 mt-2">调用 POST /api/skills/credit-evaluate，基于信用分和评价数据生成风险评估。</p>
+                <h1 class="text-3xl font-black text-indigo-900">Credit Evaluation Skill Demo</h1>
+                <p class="text-slate-600 mt-2">Call POST /api/skills/credit-evaluate and show credit score, rating, risk level, and advice.</p>
             </div>
-            <button @click="goHome" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded shadow-sm">
-                返回首页
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <button @click="goHome" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded shadow-sm">Back Home</button>
+                <button @click="goApiDemo" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded shadow-sm">Open API Demo</button>
+                <button v-if="isAdmin" @click="goAdmin" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded shadow-sm">Admin</button>
+            </div>
         </header>
 
         <section class="bg-white rounded-lg shadow p-5 mb-6">
-            <label class="block text-sm font-bold text-slate-700 mb-2">用户 ID</label>
+            <label class="block text-sm font-bold text-slate-700 mb-2">User ID</label>
             <div class="flex flex-col sm:flex-row gap-3">
                 <input
                     v-model="userId"
                     type="number"
                     min="1"
-                    placeholder="例如：2"
+                    placeholder="Example: 2"
                     class="flex-1 border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                 <button
@@ -34,7 +36,7 @@
                     :disabled="loading"
                     class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-300 text-white font-bold px-5 py-2 rounded"
                 >
-                    {{ loading ? '评估中...' : '评估信誉' }}
+                    {{ loading ? 'Evaluating...' : 'Evaluate Credit' }}
                 </button>
             </div>
             <p v-if="error" class="mt-3 text-red-600 font-medium">{{ error }}</p>
@@ -42,12 +44,12 @@
 
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div class="bg-white rounded-lg shadow p-5">
-                <h2 class="text-lg font-black text-slate-800 mb-3">请求 JSON</h2>
+                <h2 class="text-lg font-black text-slate-800 mb-3">Request JSON</h2>
                 <pre class="bg-slate-900 text-slate-100 rounded p-4 overflow-auto text-sm">{{ requestJson }}</pre>
             </div>
 
             <div class="bg-white rounded-lg shadow p-5">
-                <h2 class="text-lg font-black text-slate-800 mb-3">返回原始 JSON</h2>
+                <h2 class="text-lg font-black text-slate-800 mb-3">Raw Response JSON</h2>
                 <pre class="bg-slate-900 text-slate-100 rounded p-4 overflow-auto text-sm">{{ responseJson }}</pre>
             </div>
         </section>
@@ -58,46 +60,43 @@
                     <h2 class="text-2xl font-black text-indigo-900">{{ result.nickname }}</h2>
                     <p class="text-slate-600">{{ result.email }}</p>
                 </div>
-                <span
-                    class="inline-flex w-fit px-3 py-1 rounded-full text-sm font-bold"
-                    :class="riskClass"
-                >
+                <span class="inline-flex w-fit px-3 py-1 rounded-full text-sm font-bold" :class="riskClass">
                     {{ result.riskLevel }}
                 </span>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
                 <div class="bg-indigo-50 rounded p-4">
-                    <div class="text-sm text-slate-500">信用分</div>
+                    <div class="text-sm text-slate-500">Credit Score</div>
                     <div class="text-2xl font-black text-indigo-900">{{ result.creditRating }}</div>
                 </div>
                 <div class="bg-amber-50 rounded p-4">
-                    <div class="text-sm text-slate-500">平均星级</div>
+                    <div class="text-sm text-slate-500">Average Rating</div>
                     <div class="text-2xl font-black text-amber-700">{{ result.averageRating }}</div>
                 </div>
                 <div class="bg-emerald-50 rounded p-4">
-                    <div class="text-sm text-slate-500">评价数量</div>
+                    <div class="text-sm text-slate-500">Reviews</div>
                     <div class="text-2xl font-black text-emerald-700">{{ result.reviewCount }}</div>
                 </div>
                 <div class="bg-rose-50 rounded p-4">
-                    <div class="text-sm text-slate-500">差评数量</div>
+                    <div class="text-sm text-slate-500">Negative</div>
                     <div class="text-2xl font-black text-rose-700">{{ result.negativeReviewCount }}</div>
                 </div>
                 <div class="bg-slate-50 rounded p-4">
-                    <div class="text-sm text-slate-500">信誉等级</div>
+                    <div class="text-sm text-slate-500">Credit Level</div>
                     <div class="text-2xl font-black text-slate-800">{{ result.creditLevel }}</div>
                 </div>
             </div>
 
             <div class="border border-slate-200 rounded p-4 bg-slate-50">
-                <div class="font-bold text-slate-800 mb-1">改进建议</div>
+                <div class="font-bold text-slate-800 mb-1">Advice</div>
                 <p class="text-slate-700">{{ result.advice }}</p>
             </div>
         </section>
     </div>
 
     <script>
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, onMounted } = Vue;
 
         createApp({
             setup() {
@@ -105,7 +104,8 @@
                 const loading = ref(false);
                 const error = ref('');
                 const result = ref(null);
-                const responseJson = ref('暂无返回结果');
+                const responseJson = ref('No response yet');
+                const isAdmin = ref(false);
 
                 const requestJson = computed(() => JSON.stringify({
                     userId: userId.value ? Number(userId.value) : ''
@@ -113,15 +113,24 @@
 
                 const riskClass = computed(() => {
                     if (!result.value) return '';
-                    if (result.value.riskLevel === '高风险') return 'bg-red-100 text-red-700';
-                    if (result.value.riskLevel === '中风险') return 'bg-yellow-100 text-yellow-700';
+                    if (result.value.riskLevel === '\u9ad8\u98ce\u9669') return 'bg-red-100 text-red-700';
+                    if (result.value.riskLevel === '\u4e2d\u98ce\u9669') return 'bg-yellow-100 text-yellow-700';
                     return 'bg-green-100 text-green-700';
+                });
+
+                onMounted(() => {
+                    try {
+                        const user = JSON.parse(localStorage.getItem('user') || '{}');
+                        isAdmin.value = user.role === 'ADMIN';
+                    } catch (e) {
+                        isAdmin.value = localStorage.getItem('role') === 'ADMIN';
+                    }
                 });
 
                 const evaluate = async () => {
                     error.value = '';
                     result.value = null;
-                    responseJson.value = '请求中...';
+                    responseJson.value = 'Loading...';
                     loading.value = true;
 
                     try {
@@ -135,7 +144,7 @@
                         responseJson.value = JSON.stringify(data, null, 2);
 
                         if (!response.ok) {
-                            throw new Error(data.error || '信誉评估请求失败');
+                            throw new Error(data.error || 'Credit evaluation request failed');
                         }
 
                         result.value = data;
@@ -146,20 +155,23 @@
                     }
                 };
 
-                const goHome = () => {
-                    window.location.href = 'index.html';
-                };
+                const goHome = () => { window.location.href = 'index.html'; };
+                const goApiDemo = () => { window.location.href = 'third-party-demo.html'; };
+                const goAdmin = () => { window.location.href = 'admin.html'; };
 
                 return {
                     userId,
                     loading,
                     error,
                     result,
-                    requestJson,
                     responseJson,
+                    requestJson,
                     riskClass,
+                    isAdmin,
                     evaluate,
-                    goHome
+                    goHome,
+                    goApiDemo,
+                    goAdmin
                 };
             }
         }).mount('#app');

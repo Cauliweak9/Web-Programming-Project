@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园二手交易平台功能导航</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    <header class="bg-indigo-700 text-white">
+        <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-indigo-200 font-semibold">Web 编程课程项目答辩演示中心</p>
+                <h1 class="text-3xl md:text-4xl font-black mt-2">校园二手交易平台功能导航</h1>
+                <p class="text-indigo-100 mt-3">统一入口用于快速进入商品、订单、评价、后台、开放 API、CLI 和 Skill 演示。</p>
+            </div>
+            <a href="/index.html" class="inline-flex w-fit rounded-full bg-white px-5 py-3 font-bold text-indigo-700 shadow hover:bg-indigo-50">返回首页</a>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="rounded-lg bg-white p-5 shadow border border-slate-200">
+                <div class="text-sm text-slate-500">管理员账号</div>
+                <div class="mt-2 font-black text-lg">admin@test.com / 123456</div>
+            </div>
+            <div class="rounded-lg bg-white p-5 shadow border border-slate-200">
+                <div class="text-sm text-slate-500">卖家账号</div>
+                <div class="mt-2 font-black text-lg">seller@test.com / 123456</div>
+            </div>
+            <div class="rounded-lg bg-white p-5 shadow border border-slate-200">
+                <div class="text-sm text-slate-500">买家账号</div>
+                <div class="mt-2 font-black text-lg">buyer@test.com / 123456</div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="rounded-lg bg-white p-6 shadow border border-slate-200">
+                <h2 class="text-xl font-black text-indigo-800">A. 商品与交易</h2>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="/index.html" class="rounded bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-500">商品大厅 / 首页</a>
+                    <a href="/my-products.html" class="rounded bg-slate-800 px-4 py-2 font-bold text-white hover:bg-slate-700">我的发布</a>
+                    <a href="/dashboard.html" class="rounded bg-slate-800 px-4 py-2 font-bold text-white hover:bg-slate-700">我的订单</a>
+                </div>
+                <ul class="mt-5 space-y-2 text-slate-700">
+                    <li>商品详情：从首页商品卡片点击“查看详情”进入。</li>
+                    <li>用户信誉主页：从商品详情或评价记录进入。</li>
+                    <li>URL 示例：<code class="rounded bg-slate-100 px-2 py-1">user-profile.html?id=用户ID</code></li>
+                </ul>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow border border-slate-200">
+                <h2 class="text-xl font-black text-indigo-800">B. 管理员功能</h2>
+                <div class="mt-4">
+                    <a href="/admin.html" class="rounded bg-yellow-500 px-4 py-2 font-bold text-slate-950 hover:bg-yellow-400">管理员后台</a>
+                </div>
+                <p class="mt-5 text-slate-700">管理员账号登录后可查看用户管理、商品管理、举报处理、订单仲裁、评价管理和统计面板。</p>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow border border-slate-200">
+                <h2 class="text-xl font-black text-indigo-800">C. 开放 API</h2>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="/third-party-demo.html" class="rounded bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-500">开放 API 示例</a>
+                    <a href="/docs/API.md" class="rounded bg-slate-800 px-4 py-2 font-bold text-white hover:bg-slate-700">API 文档</a>
+                </div>
+                <p class="mt-5 text-slate-700">第三方页面可通过 <code class="rounded bg-slate-100 px-2 py-1">GET /api/products</code> 调用商品接口并展示 JSON 数据。</p>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow border border-slate-200">
+                <h2 class="text-xl font-black text-indigo-800">D. CLI 工具</h2>
+                <div class="mt-4">
+                    <a href="/docs/CLI.md" class="rounded bg-slate-800 px-4 py-2 font-bold text-white hover:bg-slate-700">CLI 使用说明</a>
+                </div>
+                <pre class="mt-5 overflow-auto rounded bg-slate-950 p-4 text-sm text-slate-100">npm run cli -- help
+npm run cli -- products
+npm run cli -- export-orders
+npm run cli -- ban-user 3
+npm run cli -- stats</pre>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow border border-slate-200 lg:col-span-2">
+                <h2 class="text-xl font-black text-indigo-800">E. 开放 Skill</h2>
+                <div class="mt-4">
+                    <a href="/skill-demo.html" class="rounded bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-500">Skill 示例</a>
+                </div>
+                <p class="mt-5 text-slate-700">通过 <code class="rounded bg-slate-100 px-2 py-1">POST /api/skills/credit-evaluate</code> 输入 <code class="rounded bg-slate-100 px-2 py-1">userId</code>，返回信用分、平均星级、信誉等级、风险等级和建议。</p>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow border border-slate-200">
+            <h2 class="text-xl font-black text-indigo-800">建议答辩演示路线</h2>
+            <p class="mt-4 leading-8 text-slate-700">首页商品搜索 → 商品详情 → 下单 → 我的订单 → 模拟付款 → 卖家发货 → 买家收货 → 评价卖家 → 用户信誉主页 → 管理员后台 → 开放 API 示例 → CLI 工具 → Skill 示例</p>
+        </section>
+    </main>
+</body>
+</html>

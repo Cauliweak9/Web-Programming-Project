@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布商品 - 校园二手交易平台</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app">
+        <nav class="bg-indigo-600 text-white p-4 shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h1 class="text-xl font-bold tracking-wider">发布新商品</h1>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <a href="index.html" class="hover:text-indigo-200">商品大厅</a>
+                <a href="my-products.html" class="hover:text-indigo-200">我的发布</a>
+                <a href="dashboard.html" class="hover:text-indigo-200">我的订单</a>
+                <a href="skill-demo.html" class="hover:text-indigo-200">Skill 示例</a>
+            </div>
+        </nav>
+
+        <main class="container mx-auto p-6 max-w-4xl">
+            <section class="bg-white rounded-xl shadow-md p-6 border-t-4 border-indigo-500">
+                <h2 class="text-2xl font-black text-gray-900 mb-6">填写商品信息</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input v-model="form.title" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="商品标题">
+                    <input v-model="form.category" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="分类">
+                    <input v-model="form.priceFiat" type="number" min="0" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="现价">
+                    <input v-model="form.originalPrice" type="number" min="0" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="原价">
+                    <input v-model="form.condition" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="成色，例如：九成新">
+                    <input v-model="form.imageUrl" class="p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="图片 URL，也可下方上传本地图片">
+                    <textarea v-model="form.description" rows="5" class="md:col-span-2 p-3 bg-gray-50 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="商品描述"></textarea>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-4 items-start">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">本地图片上传</label>
+                        <input type="file" accept="image/*" @change="handleImageFile" class="block w-full text-sm text-gray-600">
+                        <p class="mt-2 text-xs text-gray-500">课程演示模式：本地图片会转为 Data URL 保存到 imageUrl 字段，不需要额外上传服务。</p>
+                    </div>
+                    <div class="h-32 bg-gray-100 rounded border flex items-center justify-center overflow-hidden">
+                        <img v-if="form.imageUrl" :src="form.imageUrl" class="w-full h-full object-cover" alt="商品预览">
+                        <span v-else class="text-gray-400 text-sm">图片预览</span>
+                    </div>
+                </div>
+
+                <p v-if="error" class="mt-4 text-red-600 font-bold">{{ error }}</p>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <a href="index.html" class="bg-gray-200 text-gray-700 font-bold px-5 py-3 rounded hover:bg-gray-300">取消</a>
+                    <button @click="publish" :disabled="loading" class="bg-green-600 disabled:bg-green-300 text-white font-bold px-5 py-3 rounded hover:bg-green-700">
+                        {{ loading ? '发布中...' : '发布商品' }}
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const API_BASE = window.location.origin;
+
+        createApp({
+            setup() {
+                const token = localStorage.getItem('jwt_token');
+                const loading = ref(false);
+                const error = ref('');
+                const form = ref({
+                    title: '',
+                    description: '',
+                    category: '',
+                    priceFiat: '',
+                    originalPrice: '',
+                    condition: '',
+                    imageUrl: ''
+                });
+
+                const authHeaders = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+
+                onMounted(() => {
+                    if (!token) {
+                        alert('请先登录后再发布商品');
+                        window.location.href = 'login.html';
+                    }
+                });
+
+                const handleImageFile = (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                        error.value = '请选择图片文件';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        form.value.imageUrl = reader.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const publish = async () => {
+                    error.value = '';
+                    if (!form.value.title || !form.value.description || !form.value.category || !form.value.priceFiat || !form.value.condition) {
+                        error.value = '标题、描述、分类、价格和成色不能为空';
+                        return;
+                    }
+
+                    loading.value = true;
+                    try {
+                        const payload = {
+                            ...form.value,
+                            priceFiat: Number(form.value.priceFiat),
+                            originalPrice: form.value.originalPrice ? Number(form.value.originalPrice) : null
+                        };
+                        const response = await fetch(`${API_BASE}/api/products`, {
+                            method: 'POST',
+                            headers: authHeaders,
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || '发布失败');
+                        }
+                        alert('商品发布成功');
+                        window.location.href = 'index.html';
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                return { form, loading, error, handleImageFile, publish };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

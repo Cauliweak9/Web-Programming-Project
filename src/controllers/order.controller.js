@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 const prisma = new PrismaClient();
 
 export const createOrder = async (req, res) => {
@@ -201,5 +203,46 @@ export const mockPayOrder = async (req, res) => {
         // 👇 关键改动：把真正的错误甩在控制台上！
         console.error("🚨 mockPayOrder 彻底崩溃，真实原因：", error);
         return res.status(500).json({ error: "模拟付款失败", details: error.message });
+    }
+};
+
+export const cancelOrder = async (req, res) => {
+    try {
+        const orderId = Number(req.params.orderId);
+        const userId = req.user.userId;
+
+        if (!Number.isInteger(orderId) || orderId <= 0) {
+            return res.status(400).json({ error: '订单 ID 格式不正确' });
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: { product: true }
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: '订单不存在' });
+        }
+
+        if (order.buyerId !== userId) {
+            return res.status(403).json({ error: '只有买家可以取消自己的订单' });
+        }
+
+        if (order.status !== 'PENDING') {
+            return res.status(400).json({ error: '只有待付款 PENDING 订单可以取消' });
+        }
+
+        await prisma.$transaction([
+            prisma.order.delete({ where: { id: order.id } }),
+            prisma.product.update({
+                where: { id: order.productId },
+                data: { isAvailable: true }
+            })
+        ]);
+
+        res.json({ message: '订单已取消，商品已恢复在售', orderId });
+    } catch (error) {
+        console.error('取消订单失败:', error);
+        res.status(500).json({ error: '取消订单失败', details: error.message });
     }
 };

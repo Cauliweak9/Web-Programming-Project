@@ -1,242 +1,137 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>我的订单 - Web3 Escrow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders - Campus Trade</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wider">我的订单</h1>
-            <div class="space-x-4">
-                <button @click="goToMarket" class="hover:text-indigo-200 transition">首页</button>
-                <button @click="goToMyProducts" class="hover:text-indigo-200 transition">我的发布</button>
-                <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200 transition">后台管理</button>
-                <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded shadow hover:bg-red-600 transition">退出登录</button>
+        <nav class="bg-indigo-600 text-white p-4 shadow flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <h1 class="text-xl font-bold">My Orders</h1>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <button @click="goToMarket" class="hover:text-indigo-200">Market</button>
+                <button @click="goToMyProducts" class="hover:text-indigo-200">My Products</button>
+                <button @click="goToApiDemo" class="hover:text-indigo-200">Open API Demo</button>
+                <button @click="goToSkillDemo" class="hover:text-indigo-200">Skill Demo</button>
+                <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200">Admin</button>
+                <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded">Logout</button>
             </div>
         </nav>
 
-        <div class="container mx-auto p-6 max-w-5xl">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800">订单管理</h2>
+        <main class="container mx-auto p-6 max-w-5xl">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Order Management</h2>
+            <div v-if="orders.length === 0" class="text-gray-500 text-center py-10 bg-white rounded-xl shadow">No orders yet.</div>
 
-            <div v-if="orders.length === 0" class="text-gray-500 text-center py-10 bg-white rounded-xl shadow-sm">
-                暂无任何交易记录
-            </div>
-
-            <div class="space-y-4">
-                <div v-for="order in orders" :key="order.id" class="bg-white p-6 rounded-xl shadow-md border-l-4" :class="getStatusColor(order.status)">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4 border-b pb-4">
+            <section class="space-y-4">
+                <article v-for="order in orders" :key="order.id" class="bg-white p-6 rounded-xl shadow border-l-4" :class="getStatusColor(order.status)">
+                    <div class="flex flex-col md:flex-row md:justify-between gap-4 mb-4 border-b pb-4">
                         <div>
-                            <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">订单 #{{ order.id }}</span>
-                            <h3 class="text-lg font-bold text-gray-800 mt-2">
-                                {{ order.product?.title || `商品 ID: ${order.productId}` }}
-                            </h3>
+                            <span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">Order #{{ order.id }}</span>
+                            <h3 class="text-lg font-bold text-gray-800 mt-2">{{ order.product?.title || `Product ID: ${order.productId}` }}</h3>
                             <p class="text-sm text-gray-500 mt-1">
-                                <span v-if="order.buyerId === myUserId" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">我是买家</span>
-                                <span v-else-if="order.sellerId === myUserId" class="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">我是卖家</span>
+                                <span v-if="order.buyerId === myUserId" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Buyer</span>
+                                <span v-else-if="order.sellerId === myUserId" class="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Seller</span>
                             </p>
                         </div>
                         <div class="md:text-right">
                             <span class="text-2xl font-black text-gray-800">¥{{ order.product?.priceFiat || '---' }}</span>
                             <div class="mt-2">
-                                <span class="px-3 py-1 rounded-full text-sm font-bold shadow-sm" :class="getStatusBadgeClass(order.status)">
-                                    {{ order.status }}
-                                </span>
+                                <span class="px-3 py-1 rounded-full text-sm font-bold" :class="getStatusBadgeClass(order.status)">{{ order.status }}</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button v-if="order.buyerId === myUserId && order.status === 'PENDING'"
-                                @click="mockPay(order.id)"
-                                class="bg-blue-600 text-white px-5 py-2 rounded shadow hover:bg-blue-700 transition">
-                            模拟付款
-                        </button>
-
-                        <button v-if="order.sellerId === myUserId && order.status === 'LOCKED'"
-                                @click="updateOrderStatus(order.id, 'SHIPPED')"
-                                class="bg-yellow-500 text-white px-5 py-2 rounded shadow hover:bg-yellow-600 transition">
-                            确认发货
-                        </button>
-
+                        <button v-if="order.buyerId === myUserId && order.status === 'PENDING'" @click="mockPay(order.id)" class="bg-blue-600 text-white px-5 py-2 rounded">Mock Pay</button>
+                        <button v-if="order.buyerId === myUserId && order.status === 'PENDING'" @click="cancelOrder(order.id)" class="bg-gray-500 text-white px-5 py-2 rounded">Cancel</button>
+                        <button v-if="order.sellerId === myUserId && order.status === 'LOCKED'" @click="updateOrderStatus(order.id, 'SHIPPED')" class="bg-yellow-500 text-white px-5 py-2 rounded">Ship</button>
                         <template v-if="order.buyerId === myUserId && order.status === 'SHIPPED'">
-                            <button @click="updateOrderStatus(order.id, 'COMPLETED')"
-                                    class="bg-green-600 text-white px-5 py-2 rounded shadow hover:bg-green-700 transition">
-                                确认收货
-                            </button>
-                            <button @click="updateOrderStatus(order.id, 'DISPUTED')"
-                                    class="bg-red-500 text-white px-5 py-2 rounded shadow hover:bg-red-600 transition">
-                                提起仲裁
-                            </button>
+                            <button @click="updateOrderStatus(order.id, 'COMPLETED')" class="bg-green-600 text-white px-5 py-2 rounded">Confirm Receipt</button>
+                            <button @click="updateOrderStatus(order.id, 'DISPUTED')" class="bg-red-500 text-white px-5 py-2 rounded">Dispute</button>
                         </template>
-
-                        <button v-if="canReview(order)"
-                                @click="goToReview(order.id)"
-                                class="bg-purple-600 text-white px-5 py-2 rounded shadow hover:bg-purple-700 transition">
-                            评价卖家
-                        </button>
-
-                        <span v-if="hasReviewed(order)" class="text-sm text-gray-500 self-center">已评价</span>
+                        <button v-if="canReview(order)" @click="goToReview(order.id)" class="bg-purple-600 text-white px-5 py-2 rounded">Review Seller</button>
+                        <span v-if="hasReviewed(order)" class="text-sm text-gray-500 self-center">Reviewed</span>
                     </div>
-                </div>
-            </div>
-        </div>
+                </article>
+            </section>
+        </main>
     </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
         const API_BASE = window.location.origin;
-
         createApp({
             setup() {
                 const token = localStorage.getItem('jwt_token');
                 const orders = ref([]);
                 const myUserId = ref(null);
                 const isAdmin = ref(false);
-
-                const authHeaders = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                };
+                const authHeaders = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
                 onMounted(() => {
                     if (!token) {
-                        alert('请先登录');
+                        alert('Please login first.');
                         window.location.href = 'login.html';
                         return;
                     }
-                    try {
-                        const payload = JSON.parse(atob(token.split('.')[1]));
-                        myUserId.value = payload.userId;
-                    } catch (e) {
-                        console.error('解析 Token 失败', e);
-                    }
+                    try { myUserId.value = JSON.parse(atob(token.split('.')[1])).userId; } catch (e) {}
                     checkAdminAccess();
                     fetchOrders();
                 });
 
-                const checkAdminAccess = async () => {
-                    try {
-                        const res = await fetch(`${API_BASE}/api/admin/orders`, { headers: authHeaders });
-                        isAdmin.value = res.ok;
-                    } catch (e) {
-                        isAdmin.value = false;
-                    }
+                const checkAdminAccess = () => {
+                    try { isAdmin.value = JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN'; }
+                    catch (e) { isAdmin.value = localStorage.getItem('role') === 'ADMIN'; }
                 };
-
                 const fetchOrders = async () => {
                     try {
                         const res = await fetch(`${API_BASE}/api/orders`, { headers: authHeaders });
-                        if (res.ok) {
-                            const data = await res.json();
-                            orders.value = data.orders || data || [];
-                        }
-                    } catch (e) {
-                        console.error('获取订单失败', e);
-                    }
+                        const data = await res.json();
+                        if (res.ok) orders.value = data.orders || data || [];
+                    } catch (e) { console.error('Load orders failed', e); }
                 };
-
                 const mockPay = async (orderId) => {
                     try {
-                        const res = await fetch(`${API_BASE}/api/orders/${orderId}/mock-pay`, {
-                            method: 'PATCH',
-                            headers: authHeaders
-                        });
+                        const res = await fetch(`${API_BASE}/api/orders/${orderId}/mock-pay`, { method: 'PATCH', headers: authHeaders });
                         const data = await res.json();
-                        if (res.ok) {
-                            alert('模拟付款成功，订单已锁定。');
-                            fetchOrders();
-                        } else {
-                            alert(`付款失败: ${data.error || JSON.stringify(data)}`);
-                        }
-                    } catch (e) {
-                        alert('网络错误');
-                    }
+                        if (res.ok) { alert('Payment mocked. Order locked.'); fetchOrders(); }
+                        else alert(data.error || 'Payment failed.');
+                    } catch (e) { alert('Network error.'); }
                 };
-
-                const updateOrderStatus = async (orderId, newStatus) => {
+                const cancelOrder = async (orderId) => {
+                    if (!confirm('Cancel this order? Product will become available again.')) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/orders/${orderId}/cancel`, { method: 'PATCH', headers: authHeaders });
+                        const data = await res.json();
+                        if (res.ok) { alert(data.message || 'Order cancelled.'); fetchOrders(); }
+                        else alert(data.error || 'Cancel failed.');
+                    } catch (e) { alert('Network error.'); }
+                };
+                const updateOrderStatus = async (orderId, status) => {
                     try {
                         const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
-                            method: 'PATCH',
-                            headers: authHeaders,
-                            body: JSON.stringify({ status: newStatus })
+                            method: 'PATCH', headers: authHeaders, body: JSON.stringify({ status })
                         });
-                        if (res.ok) {
-                            alert(`操作成功，状态已流转为 ${newStatus}`);
-                            fetchOrders();
-                        } else {
-                            const data = await res.json();
-                            alert(data.error || '操作失败');
-                        }
-                    } catch (e) {
-                        alert('网络错误');
-                    }
+                        const data = await res.json();
+                        if (res.ok) { alert(`Status updated to ${status}.`); fetchOrders(); }
+                        else alert(data.error || 'Operation failed.');
+                    } catch (e) { alert('Network error.'); }
                 };
-
-                const hasReviewed = (order) => {
-                    return (order.reviews || []).some((review) => review.reviewerId === myUserId.value);
-                };
-
-                const canReview = (order) => {
-                    return order.buyerId === myUserId.value && order.status === 'COMPLETED' && !hasReviewed(order);
-                };
-
-                const goToReview = (orderId) => {
-                    window.location.href = `review.html?orderId=${orderId}`;
-                };
-
-                const getStatusColor = (status) => {
-                    const colors = {
-                        PENDING: 'border-gray-400',
-                        LOCKED: 'border-blue-500',
-                        SHIPPED: 'border-yellow-500',
-                        DISPUTED: 'border-red-500',
-                        COMPLETED: 'border-green-500',
-                        RELEASED: 'border-green-600',
-                        REFUNDED: 'border-gray-500'
-                    };
-                    return colors[status] || 'border-gray-200';
-                };
-
-                const getStatusBadgeClass = (status) => {
-                    const colors = {
-                        PENDING: 'bg-gray-200 text-gray-700',
-                        LOCKED: 'bg-blue-100 text-blue-700',
-                        SHIPPED: 'bg-yellow-100 text-yellow-700',
-                        DISPUTED: 'bg-red-100 text-red-700 font-bold animate-pulse',
-                        COMPLETED: 'bg-green-100 text-green-700',
-                        RELEASED: 'bg-green-100 text-green-700',
-                        REFUNDED: 'bg-gray-200 text-gray-600'
-                    };
-                    return colors[status] || 'bg-gray-100 text-gray-500';
-                };
-
-                const logout = () => {
-                    localStorage.removeItem('jwt_token');
-                    window.location.href = 'login.html';
-                };
+                const hasReviewed = (order) => (order.reviews || []).some(review => review.reviewerId === myUserId.value);
+                const canReview = (order) => order.buyerId === myUserId.value && order.status === 'COMPLETED' && !hasReviewed(order);
+                const goToReview = (orderId) => { window.location.href = `review.html?orderId=${orderId}`; };
+                const getStatusColor = (status) => ({ PENDING:'border-gray-400', LOCKED:'border-blue-500', SHIPPED:'border-yellow-500', COMPLETED:'border-green-500', DISPUTED:'border-red-500' }[status] || 'border-gray-300');
+                const getStatusBadgeClass = (status) => ({ PENDING:'bg-gray-100 text-gray-700', LOCKED:'bg-blue-100 text-blue-700', SHIPPED:'bg-yellow-100 text-yellow-700', COMPLETED:'bg-green-100 text-green-700', DISPUTED:'bg-red-100 text-red-700' }[status] || 'bg-gray-100 text-gray-700');
+                const logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
                 const goToMarket = () => { window.location.href = 'index.html'; };
                 const goToMyProducts = () => { window.location.href = 'my-products.html'; };
+                const goToApiDemo = () => { window.location.href = 'third-party-demo.html'; };
+                const goToSkillDemo = () => { window.location.href = 'skill-demo.html'; };
                 const goToAdmin = () => { window.location.href = 'admin.html'; };
-
-                return {
-                    orders,
-                    myUserId,
-                    isAdmin,
-                    mockPay,
-                    updateOrderStatus,
-                    hasReviewed,
-                    canReview,
-                    goToReview,
-                    getStatusColor,
-                    getStatusBadgeClass,
-                    logout,
-                    goToMarket,
-                    goToMyProducts,
-                    goToAdmin
-                };
+                return { orders, myUserId, isAdmin, mockPay, cancelOrder, updateOrderStatus, hasReviewed, canReview, goToReview, getStatusColor, getStatusBadgeClass, logout, goToMarket, goToMyProducts, goToApiDemo, goToSkillDemo, goToAdmin };
             }
         }).mount('#app');
     </script>

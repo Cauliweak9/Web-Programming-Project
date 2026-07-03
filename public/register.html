@@ -1,63 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Campus Trade</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>用户注册 - Web3 Escrow</title>
 </head>
-<body class="bg-gray-50 h-screen flex items-center justify-center">
-    <div id="app" class="bg-white p-8 rounded-xl shadow-lg w-96 border-t-4 border-green-500">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">新用户注册</h2>
-        
-        <input v-model="nickname" class="w-full mb-4 p-3 border rounded focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="用户昵称 (如: 卖家张三)">
-        <input v-model="email" class="w-full mb-4 p-3 border rounded focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="邮箱地址 (登录账号)">
-        <input v-model="password" type="password" class="w-full mb-6 p-3 border rounded focus:ring-2 focus:ring-green-400 focus:outline-none" placeholder="设置密码">
-        
-        <button @click="handleRegister" class="w-full bg-green-500 text-white p-3 rounded font-bold hover:bg-green-600 transition shadow">
-            提交注册
-        </button>
-        
-        <div class="mt-4 text-center text-sm">
-            <a href="login.html" class="text-green-600 hover:underline">已有账号？立即登录</a>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div id="app" class="bg-white w-full max-w-md rounded-xl shadow p-8">
+        <h1 class="text-2xl font-black text-indigo-700 mb-6">Create Account</h1>
+        <div class="space-y-4">
+            <input v-model="form.email" class="w-full border rounded px-3 py-2" placeholder="Email">
+            <input v-model="form.nickname" class="w-full border rounded px-3 py-2" placeholder="Nickname">
+            <input v-model="form.password" type="password" class="w-full border rounded px-3 py-2" placeholder="Password">
+            <button @click="register" class="w-full bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">Register</button>
+            <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
+            <p class="text-sm text-gray-500">Already have an account? <a class="text-indigo-600 font-bold" href="login.html">Login</a></p>
         </div>
-        <p class="mt-4 text-red-500 text-center text-sm">{{ error }}</p>
     </div>
 
     <script>
         const { createApp, ref } = Vue;
         createApp({
             setup() {
-                const nickname = ref('');
-                const email = ref('');
-                const password = ref('');
+                const form = ref({ email: '', nickname: '', password: '' });
                 const error = ref('');
 
-                const handleRegister = async () => {
+                const register = async () => {
                     error.value = '';
-                    if (!nickname.value || !email.value || !password.value) {
-                        error.value = '所有字段均为必填项'; return;
+                    if (!form.value.email || !form.value.nickname || !form.value.password) {
+                        error.value = 'Email, nickname and password are required.';
+                        return;
                     }
+
                     try {
-                        const res = await fetch('http://localhost:3000/api/auth/register', {
+                        const res = await fetch('/api/auth/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                nickname: nickname.value,
-                                email: email.value, 
-                                password: password.value 
-                            })
+                            body: JSON.stringify(form.value)
                         });
                         const data = await res.json();
-                        if (res.ok) {
-                            alert('注册成功！点击确定跳转登录。');
-                            window.location.href = 'login.html';
-                        } else {
-                            error.value = data.error || '注册失败';
+                        if (!res.ok) {
+                            error.value = data.error || 'Register failed.';
+                            return;
                         }
-                    } catch (e) { error.value = '后端服务连接失败'; }
+                        alert('Register success. Please login.');
+                        window.location.href = 'login.html';
+                    } catch (e) {
+                        error.value = 'Network error.';
+                    }
                 };
-                return { nickname, email, password, error, handleRegister };
+
+                return { form, error, register };
             }
         }).mount('#app');
     </script>

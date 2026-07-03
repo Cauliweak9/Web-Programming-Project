@@ -63,3 +63,56 @@ export const login = async (req, res) => {
         });
     }
 };
+
+export const getMe = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.userId },
+            select: {
+                id: true,
+                email: true,
+                nickname: true,
+                role: true,
+                creditRating: true,
+                isBanned: true,
+                createdAt: true
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: '用户不存在' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ error: '获取个人信息失败', details: error.message });
+    }
+};
+
+export const updateMe = async (req, res) => {
+    try {
+        const { nickname } = req.body;
+
+        if (!nickname || !nickname.trim()) {
+            return res.status(400).json({ error: '昵称不能为空' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { nickname: nickname.trim() },
+            select: {
+                id: true,
+                email: true,
+                nickname: true,
+                role: true,
+                creditRating: true,
+                isBanned: true,
+                createdAt: true
+            }
+        });
+
+        res.json({ message: '个人信息已更新', user });
+    } catch (error) {
+        res.status(500).json({ error: '更新个人信息失败', details: error.message });
+    }
+};
