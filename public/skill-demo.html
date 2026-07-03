@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信誉评估 Skill 调用示例</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    <div id="app" class="max-w-5xl mx-auto px-4 py-8">
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-indigo-900">信誉评估 Skill 调用示例</h1>
+                <p class="text-slate-600 mt-2">调用 POST /api/skills/credit-evaluate，基于信用分和评价数据生成风险评估。</p>
+            </div>
+            <button @click="goHome" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded shadow-sm">
+                返回首页
+            </button>
+        </header>
+
+        <section class="bg-white rounded-lg shadow p-5 mb-6">
+            <label class="block text-sm font-bold text-slate-700 mb-2">用户 ID</label>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input
+                    v-model="userId"
+                    type="number"
+                    min="1"
+                    placeholder="例如：2"
+                    class="flex-1 border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <button
+                    @click="evaluate"
+                    :disabled="loading"
+                    class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-300 text-white font-bold px-5 py-2 rounded"
+                >
+                    {{ loading ? '评估中...' : '评估信誉' }}
+                </button>
+            </div>
+            <p v-if="error" class="mt-3 text-red-600 font-medium">{{ error }}</p>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-lg font-black text-slate-800 mb-3">请求 JSON</h2>
+                <pre class="bg-slate-900 text-slate-100 rounded p-4 overflow-auto text-sm">{{ requestJson }}</pre>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-lg font-black text-slate-800 mb-3">返回原始 JSON</h2>
+                <pre class="bg-slate-900 text-slate-100 rounded p-4 overflow-auto text-sm">{{ responseJson }}</pre>
+            </div>
+        </section>
+
+        <section v-if="result" class="bg-white rounded-lg shadow p-5">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="text-2xl font-black text-indigo-900">{{ result.nickname }}</h2>
+                    <p class="text-slate-600">{{ result.email }}</p>
+                </div>
+                <span
+                    class="inline-flex w-fit px-3 py-1 rounded-full text-sm font-bold"
+                    :class="riskClass"
+                >
+                    {{ result.riskLevel }}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+                <div class="bg-indigo-50 rounded p-4">
+                    <div class="text-sm text-slate-500">信用分</div>
+                    <div class="text-2xl font-black text-indigo-900">{{ result.creditRating }}</div>
+                </div>
+                <div class="bg-amber-50 rounded p-4">
+                    <div class="text-sm text-slate-500">平均星级</div>
+                    <div class="text-2xl font-black text-amber-700">{{ result.averageRating }}</div>
+                </div>
+                <div class="bg-emerald-50 rounded p-4">
+                    <div class="text-sm text-slate-500">评价数量</div>
+                    <div class="text-2xl font-black text-emerald-700">{{ result.reviewCount }}</div>
+                </div>
+                <div class="bg-rose-50 rounded p-4">
+                    <div class="text-sm text-slate-500">差评数量</div>
+                    <div class="text-2xl font-black text-rose-700">{{ result.negativeReviewCount }}</div>
+                </div>
+                <div class="bg-slate-50 rounded p-4">
+                    <div class="text-sm text-slate-500">信誉等级</div>
+                    <div class="text-2xl font-black text-slate-800">{{ result.creditLevel }}</div>
+                </div>
+            </div>
+
+            <div class="border border-slate-200 rounded p-4 bg-slate-50">
+                <div class="font-bold text-slate-800 mb-1">改进建议</div>
+                <p class="text-slate-700">{{ result.advice }}</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                const userId = ref('');
+                const loading = ref(false);
+                const error = ref('');
+                const result = ref(null);
+                const responseJson = ref('暂无返回结果');
+
+                const requestJson = computed(() => JSON.stringify({
+                    userId: userId.value ? Number(userId.value) : ''
+                }, null, 2));
+
+                const riskClass = computed(() => {
+                    if (!result.value) return '';
+                    if (result.value.riskLevel === '高风险') return 'bg-red-100 text-red-700';
+                    if (result.value.riskLevel === '中风险') return 'bg-yellow-100 text-yellow-700';
+                    return 'bg-green-100 text-green-700';
+                });
+
+                const evaluate = async () => {
+                    error.value = '';
+                    result.value = null;
+                    responseJson.value = '请求中...';
+                    loading.value = true;
+
+                    try {
+                        const body = { userId: Number(userId.value) };
+                        const response = await fetch('/api/skills/credit-evaluate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+                        const data = await response.json();
+                        responseJson.value = JSON.stringify(data, null, 2);
+
+                        if (!response.ok) {
+                            throw new Error(data.error || '信誉评估请求失败');
+                        }
+
+                        result.value = data;
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const goHome = () => {
+                    window.location.href = 'index.html';
+                };
+
+                return {
+                    userId,
+                    loading,
+                    error,
+                    result,
+                    requestJson,
+                    responseJson,
+                    riskClass,
+                    evaluate,
+                    goHome
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

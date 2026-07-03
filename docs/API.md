@@ -436,6 +436,75 @@ Resolve:
 - Method: `PATCH`
 - URL: `/api/admin/reports/:id/resolve`
 
-## Skill
+## Open Skill
 
-No `/api/skills` route exists in the current project.
+### Credit Evaluate
+
+- Method: `POST`
+- URL: `/api/skills/credit-evaluate`
+- Description: Evaluate a user's credit based on `User.creditRating` and visible received reviews.
+- Token: No
+
+Use cases:
+
+- Third-party systems can quickly check seller credit before creating a trade.
+- Course demo pages can show how platform data can be exposed as a reusable Skill.
+- Admin or operation tools can use the result as a lightweight risk reference.
+
+Request body:
+
+```json
+{
+  "userId": 2
+}
+```
+
+Response:
+
+```json
+{
+  "userId": 2,
+  "nickname": "seller",
+  "email": "seller@test.com",
+  "creditRating": 96,
+  "averageRating": 4.8,
+  "reviewCount": 6,
+  "negativeReviewCount": 0,
+  "creditLevel": "优秀",
+  "riskLevel": "低风险",
+  "advice": "该用户信誉较好，建议继续保持及时沟通和按时发货。"
+}
+```
+
+Rules:
+
+- `averageRating`: average rating of visible reviews received by the user.
+- `reviewCount`: count of visible reviews received by the user.
+- `negativeReviewCount`: count of visible reviews where `rating <= 2`.
+- `creditLevel`: `优秀` for `creditRating >= 100`, `良好` for `>= 90`, `一般` for `>= 75`, otherwise `较低`.
+- `riskLevel`: `高风险` when `negativeReviewCount >= 3` or `creditRating < 75`; `中风险` when `negativeReviewCount >= 1` or `creditRating < 90`; otherwise `低风险`.
+
+Common errors:
+
+```json
+{
+  "error": "userId 缺失或格式不正确",
+  "example": {
+    "userId": 2
+  }
+}
+```
+
+```json
+{
+  "error": "用户不存在",
+  "userId": 999
+}
+```
+
+```json
+{
+  "error": "信誉评估失败",
+  "details": "..."
+}
+```
