@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/app.js",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "cli": "node cli/trade-cli.js"
   },
   "keywords": [],
   "author": "",
