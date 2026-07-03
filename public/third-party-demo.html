@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>校园二手交易平台开放 API 调用示例</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            background: #f3f4f6;
+            color: #111827;
+        }
+        header {
+            background: #4f46e5;
+            color: white;
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        header h1 { margin: 0; font-size: 22px; }
+        button {
+            cursor: pointer;
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-weight: 700;
+        }
+        .home-button { background: rgba(255, 255, 255, 0.18); color: white; }
+        main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+        .panel {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+        input, select {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        .primary { background: #4f46e5; color: white; }
+        .secondary { background: #e5e7eb; color: #374151; }
+        .url-box {
+            font-family: Consolas, monospace;
+            background: #111827;
+            color: #d1fae5;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 20px;
+        }
+        .cards { display: grid; gap: 12px; }
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px;
+            background: #fff;
+        }
+        .card h3 { margin: 0 0 8px; color: #4338ca; }
+        .meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: #6b7280;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+        .price { color: #dc2626; font-size: 22px; font-weight: 900; }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 14px;
+            border-radius: 8px;
+            max-height: 520px;
+            overflow: auto;
+        }
+        .error { color: #b91c1c; font-weight: 700; margin-top: 12px; }
+        @media (max-width: 860px) {
+            .filters, .content-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>校园二手交易平台开放 API 调用示例</h1>
+        <button class="home-button" onclick="location.href='index.html'">返回首页</button>
+    </header>
+
+    <main>
+        <section class="panel">
+            <div class="filters">
+                <input id="keyword" placeholder="关键词，如 教材 / 台灯">
+                <select id="category">
+                    <option value="">全部分类</option>
+                    <option value="教材资料">教材资料</option>
+                    <option value="宿舍用品">宿舍用品</option>
+                    <option value="电子数码">电子数码</option>
+                    <option value="交通出行">交通出行</option>
+                    <option value="考试资料">考试资料</option>
+                </select>
+                <input id="minPrice" type="number" min="0" placeholder="最低价">
+                <input id="maxPrice" type="number" min="0" placeholder="最高价">
+                <div style="display:flex; gap:10px;">
+                    <button class="primary" onclick="queryProducts()">查询</button>
+                    <button class="secondary" onclick="resetFilters()">重置</button>
+                </div>
+            </div>
+            <div id="error" class="error"></div>
+        </section>
+
+        <section class="panel">
+            <h2>请求的 API URL</h2>
+            <div id="requestUrl" class="url-box">尚未请求</div>
+        </section>
+
+        <section class="content-grid">
+            <div class="panel">
+                <h2>商品卡片</h2>
+                <div id="cards" class="cards"></div>
+            </div>
+            <div class="panel">
+                <h2>原始 JSON</h2>
+                <pre id="jsonResult">{}</pre>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const apiBase = window.location.origin;
+
+        function buildUrl() {
+            const params = new URLSearchParams();
+            const keyword = document.getElementById('keyword').value.trim();
+            const category = document.getElementById('category').value;
+            const minPrice = document.getElementById('minPrice').value;
+            const maxPrice = document.getElementById('maxPrice').value;
+
+            if (keyword) params.set('keyword', keyword);
+            if (category) params.set('category', category);
+            if (minPrice) params.set('minPrice', minPrice);
+            if (maxPrice) params.set('maxPrice', maxPrice);
+            params.set('limit', '50');
+
+            return `${apiBase}/api/products?${params.toString()}`;
+        }
+
+        async function queryProducts() {
+            const error = document.getElementById('error');
+            const requestUrl = document.getElementById('requestUrl');
+            const jsonResult = document.getElementById('jsonResult');
+            const cards = document.getElementById('cards');
+            const url = buildUrl();
+
+            error.textContent = '';
+            requestUrl.textContent = url;
+            cards.innerHTML = '<div class="card">正在请求开放 API...</div>';
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                jsonResult.textContent = JSON.stringify(data, null, 2);
+
+                if (!response.ok) {
+                    throw new Error(data.error || '请求失败');
+                }
+
+                renderCards(data.products || []);
+            } catch (err) {
+                error.textContent = err.message || '网络错误';
+                cards.innerHTML = '<div class="card">请求失败，请检查后端服务是否已启动。</div>';
+            }
+        }
+
+        function renderCards(products) {
+            const cards = document.getElementById('cards');
+            if (!products.length) {
+                cards.innerHTML = '<div class="card">没有匹配的商品。</div>';
+                return;
+            }
+
+            cards.innerHTML = products.map((product) => `
+                <article class="card">
+                    <h3>${escapeHtml(product.title || '未命名商品')}</h3>
+                    <p>${escapeHtml(product.description || '')}</p>
+                    <div class="meta">
+                        <span>分类：${escapeHtml(product.category || '-')}</span>
+                        <span>成色：${escapeHtml(product.condition || '-')}</span>
+                        <span>卖家：${escapeHtml(product.seller?.nickname || '未知')}</span>
+                    </div>
+                    <div class="price">¥${product.priceFiat ?? '-'}</div>
+                </article>
+            `).join('');
+        }
+
+        function resetFilters() {
+            document.getElementById('keyword').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('minPrice').value = '';
+            document.getElementById('maxPrice').value = '';
+            queryProducts();
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        queryProducts();
+    </script>
+</body>
+</html>

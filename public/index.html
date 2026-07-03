@@ -13,6 +13,7 @@
             <div class="space-x-4">
                 <button @click="goToMyProducts" class="hover:text-indigo-200 transition">我的发布</button>
                 <button @click="goToDashboard" class="hover:text-indigo-200 transition">我的订单</button>
+                <button @click="goToApiDemo" class="hover:text-indigo-200 transition">开放 API 示例</button>
                 <button v-if="isAdmin" @click="goToAdmin" class="hover:text-indigo-200 transition">后台管理</button>
                 <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded shadow hover:bg-red-600 transition">退出登录</button>
             </div>
@@ -249,6 +250,7 @@
                 };
                 const goToDashboard = () => { window.location.href = 'dashboard.html'; };
                 const goToMyProducts = () => { window.location.href = 'my-products.html'; };
+                const goToApiDemo = () => { window.location.href = 'third-party-demo.html'; };
                 const goToAdmin = () => { window.location.href = 'admin.html'; };
 
                 return {
@@ -268,6 +270,7 @@
                     logout,
                     goToDashboard,
                     goToMyProducts,
+                    goToApiDemo,
                     goToAdmin
                 };
             }
