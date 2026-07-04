@@ -1,39 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Products - Campus Trade</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>我的发布 - 校园二手交易平台</title>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <nav></nav>
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-            <h1 class="text-xl font-bold">My Products</h1>
-            <div class="flex flex-wrap gap-3 text-sm">
-                <button @click="goHome" class="hover:text-indigo-200">Market</button>
-                <button @click="goPublish" class="hover:text-indigo-200">Publish</button>
-                <button @click="goDashboard" class="hover:text-indigo-200">My Orders</button>
-                <button @click="goSkillDemo" class="hover:text-indigo-200">Skill Demo</button>
-                <button v-if="isAdmin" @click="goAdmin" class="hover:text-indigo-200">Admin</button>
-                <button @click="logout" class="bg-red-500 px-4 py-1.5 rounded">Logout</button>
-            </div>
-        </nav>
-
         <main class="container mx-auto p-6">
-            <div v-if="products.length === 0" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">No products published yet.</div>
+            <h1 class="text-2xl font-bold mb-6 text-gray-800">我的发布</h1>
+            <div v-if="products.length === 0" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">你还没有发布商品。</div>
             <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <article v-for="p in products" :key="p.id" class="bg-white rounded-xl shadow overflow-hidden border">
                     <div class="h-44 bg-gray-100">
                         <img v-if="p.imageUrl" :src="p.imageUrl" :alt="p.title" class="w-full h-full object-cover">
-                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">No image</div>
+                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">暂无图片</div>
                     </div>
                     <div class="p-5">
                         <template v-if="editingId !== p.id">
                             <div class="flex justify-between gap-3 mb-2">
                                 <h2 class="text-xl font-bold text-indigo-700">{{ p.title }}</h2>
-                                <span class="text-xs px-3 py-1 rounded-full h-fit" :class="p.isAvailable ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">{{ p.isAvailable ? 'Available' : 'Delisted' }}</span>
+                                <span class="text-xs px-3 py-1 rounded-full h-fit" :class="p.isAvailable ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">{{ p.isAvailable ? '在售' : '已下架' }}</span>
                             </div>
                             <p class="text-sm text-gray-500 mb-3">{{ p.description }}</p>
                             <div class="flex justify-between text-xs text-gray-500 bg-gray-50 p-2 rounded mb-4">
@@ -43,31 +33,31 @@
                             <div class="flex justify-between items-end">
                                 <div>
                                     <div class="text-2xl font-black text-red-500">¥{{ p.priceFiat }}</div>
-                                    <div v-if="p.originalPrice" class="text-sm text-gray-400 line-through">Original ¥{{ p.originalPrice }}</div>
-                                    <div class="text-xs text-gray-400 mt-1">Orders: {{ p._count?.orders || 0 }}</div>
+                                    <div v-if="p.originalPrice" class="text-sm text-gray-400 line-through">原价 ¥{{ p.originalPrice }}</div>
+                                    <div class="text-xs text-gray-400 mt-1">订单数：{{ p._count?.orders || 0 }}</div>
                                 </div>
                                 <div class="flex flex-wrap gap-2 justify-end">
-                                    <button @click="startEdit(p)" class="bg-indigo-600 text-white px-3 py-2 rounded">Edit</button>
-                                    <button @click="delistProduct(p)" class="bg-yellow-500 text-white px-3 py-2 rounded">Delist</button>
-                                    <button @click="deleteProduct(p)" class="bg-red-600 text-white px-3 py-2 rounded">Delete</button>
+                                    <button @click="startEdit(p)" class="bg-indigo-600 text-white px-3 py-2 rounded">编辑</button>
+                                    <button @click="delistProduct(p)" class="bg-yellow-500 text-white px-3 py-2 rounded">下架</button>
+                                    <button @click="deleteProduct(p)" class="bg-red-600 text-white px-3 py-2 rounded">删除</button>
                                 </div>
                             </div>
                         </template>
 
                         <template v-else>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <input v-model="editForm.title" class="p-2.5 bg-gray-50 border rounded" placeholder="Title">
-                                <input v-model="editForm.category" class="p-2.5 bg-gray-50 border rounded" placeholder="Category">
-                                <input v-model="editForm.priceFiat" type="number" min="0" class="p-2.5 bg-gray-50 border rounded" placeholder="Price">
-                                <input v-model="editForm.originalPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded" placeholder="Original price">
-                                <input v-model="editForm.condition" class="p-2.5 bg-gray-50 border rounded" placeholder="Condition">
-                                <input v-model="editForm.imageUrl" class="p-2.5 bg-gray-50 border rounded" placeholder="Image URL">
+                                <input v-model="editForm.title" class="p-2.5 bg-gray-50 border rounded" placeholder="标题">
+                                <input v-model="editForm.category" class="p-2.5 bg-gray-50 border rounded" placeholder="分类">
+                                <input v-model="editForm.priceFiat" type="number" min="0" class="p-2.5 bg-gray-50 border rounded" placeholder="价格">
+                                <input v-model="editForm.originalPrice" type="number" min="0" class="p-2.5 bg-gray-50 border rounded" placeholder="原价">
+                                <input v-model="editForm.condition" class="p-2.5 bg-gray-50 border rounded" placeholder="成色">
+                                <input v-model="editForm.imageUrl" class="p-2.5 bg-gray-50 border rounded" placeholder="图片 URL">
                                 <input type="file" accept="image/*" @change="handleEditImageFile" class="sm:col-span-2 p-2.5 bg-gray-50 border rounded">
-                                <textarea v-model="editForm.description" class="sm:col-span-2 p-2.5 bg-gray-50 border rounded" rows="3" placeholder="Description"></textarea>
+                                <textarea v-model="editForm.description" class="sm:col-span-2 p-2.5 bg-gray-50 border rounded" rows="3" placeholder="描述"></textarea>
                             </div>
                             <div class="flex gap-2 justify-end mt-4">
-                                <button @click="cancelEdit" class="bg-gray-200 text-gray-700 px-4 py-2 rounded">Cancel</button>
-                                <button @click="saveEdit(p.id)" class="bg-green-600 text-white px-4 py-2 rounded">Save</button>
+                                <button @click="cancelEdit" class="bg-gray-200 text-gray-700 px-4 py-2 rounded">取消</button>
+                                <button @click="saveEdit(p.id)" class="bg-green-600 text-white px-4 py-2 rounded">保存</button>
                             </div>
                         </template>
                     </div>
@@ -79,32 +69,29 @@
     <script>
         const { createApp, ref, onMounted } = Vue;
         const API_BASE = window.location.origin;
+
         createApp({
             setup() {
-                const token = localStorage.getItem('jwt_token');
+                const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
                 const products = ref([]);
                 const editingId = ref(null);
                 const editForm = ref({});
-                const isAdmin = ref(false);
                 const authHeaders = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
                 onMounted(() => {
-                    if (!token) { alert('Please login first.'); window.location.href = 'login.html'; return; }
-                    checkAdminAccess();
+                    if (!token) { alert('请先登录'); window.location.href = 'login.html'; return; }
                     fetchProducts();
                 });
-                const checkAdminAccess = () => {
-                    try { isAdmin.value = JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN'; }
-                    catch (e) { isAdmin.value = localStorage.getItem('role') === 'ADMIN'; }
-                };
+
                 const fetchProducts = async () => {
                     try {
                         const res = await fetch(`${API_BASE}/api/products/my/list`, { headers: authHeaders });
                         const data = await res.json();
-                        if (!res.ok) { alert(data.error || 'Load products failed.'); return; }
+                        if (!res.ok) { alert(data.error || '加载商品失败'); return; }
                         products.value = data.products || [];
-                    } catch (e) { alert('Network error.'); }
+                    } catch (e) { alert('网络错误'); }
                 };
+
                 const startEdit = (product) => {
                     editingId.value = product.id;
                     editForm.value = {
@@ -117,49 +104,50 @@
                         imageUrl: product.imageUrl || ''
                     };
                 };
+
                 const cancelEdit = () => { editingId.value = null; editForm.value = {}; };
+
                 const handleEditImageFile = (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
-                    if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); return; }
+                    if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
                     const reader = new FileReader();
                     reader.onload = () => { editForm.value.imageUrl = reader.result; };
                     reader.readAsDataURL(file);
                 };
+
                 const saveEdit = async (id) => {
                     try {
                         const payload = { ...editForm.value, priceFiat: parseFloat(editForm.value.priceFiat), originalPrice: editForm.value.originalPrice ? parseFloat(editForm.value.originalPrice) : null };
                         const res = await fetch(`${API_BASE}/api/products/${id}`, { method: 'PUT', headers: authHeaders, body: JSON.stringify(payload) });
                         const data = await res.json();
-                        if (!res.ok) { alert(data.error || 'Save failed.'); return; }
+                        if (!res.ok) { alert(data.error || '保存失败'); return; }
                         cancelEdit();
                         fetchProducts();
-                    } catch (e) { alert('Network error.'); }
+                    } catch (e) { alert('网络错误'); }
                 };
+
                 const delistProduct = async (product) => {
-                    if (!product.isAvailable) { alert('Product already delisted.'); return; }
-                    if (!confirm(`Delist ${product.title}?`)) return;
+                    if (!product.isAvailable) { alert('该商品已经下架'); return; }
+                    if (!confirm(`确认下架「${product.title}」？`)) return;
                     const res = await fetch(`${API_BASE}/api/products/${product.id}`, { method: 'DELETE', headers: authHeaders });
                     const data = await res.json();
-                    if (!res.ok) { alert(data.error || 'Delist failed.'); return; }
+                    if (!res.ok) { alert(data.error || '下架失败'); return; }
                     fetchProducts();
                 };
+
                 const deleteProduct = async (product) => {
-                    if (!confirm(`Delete ${product.title}? Products with orders may only be delisted.`)) return;
+                    if (!confirm(`确认删除「${product.title}」？已有订单的商品只能下架。`)) return;
                     const res = await fetch(`${API_BASE}/api/products/${product.id}/permanent`, { method: 'DELETE', headers: authHeaders });
                     const data = await res.json();
-                    if (!res.ok) { alert(data.error || 'Delete failed.'); return; }
+                    if (!res.ok) { alert(data.error || '删除失败'); return; }
                     fetchProducts();
                 };
-                const logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
-                const goHome = () => { window.location.href = 'index.html'; };
-                const goPublish = () => { window.location.href = 'publish-product.html'; };
-                const goDashboard = () => { window.location.href = 'dashboard.html'; };
-                const goSkillDemo = () => { window.location.href = 'skill-demo.html'; };
-                const goAdmin = () => { window.location.href = 'admin.html'; };
-                return { products, editingId, editForm, isAdmin, startEdit, cancelEdit, handleEditImageFile, saveEdit, delistProduct, deleteProduct, logout, goHome, goPublish, goDashboard, goSkillDemo, goAdmin };
+
+                return { products, editingId, editForm, startEdit, cancelEdit, handleEditImageFile, saveEdit, delistProduct, deleteProduct };
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

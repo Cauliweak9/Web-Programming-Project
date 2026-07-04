@@ -1,12 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <title>系统登录</title>
 </head>
-<body class="bg-gray-50 h-screen flex items-center justify-center">
+<body class="bg-gray-50 min-h-screen">
+    <nav></nav>
+    <main class="min-h-[calc(100vh-72px)] flex items-center justify-center p-4">
     <div id="app" class="bg-white p-8 rounded-xl shadow-lg w-96">
         <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">用户登录</h2>
         <input v-model="email" class="w-full mb-4 p-3 border rounded" placeholder="邮箱 (例如: test@test.com)">
@@ -17,6 +19,7 @@
         </div>
         <p class="mt-4 text-red-500 text-center text-sm">{{ error }}</p>
     </div>
+    </main>
 
     <script>
         const { createApp, ref } = Vue;
@@ -36,6 +39,13 @@
                         const data = await res.json();
                         if (res.ok) {
                             localStorage.setItem('jwt_token', data.token);
+                            localStorage.setItem('token', data.token);
+                            if (data.user) {
+                                localStorage.setItem('user', JSON.stringify(data.user));
+                                localStorage.setItem('role', data.user.role);
+                            } else if (data.role) {
+                                localStorage.setItem('role', data.role);
+                            }
                             window.location.href = 'index.html'; // 登录成功跳转到交易大厅
                         } else {
                             error.value = data.error;
@@ -46,5 +56,6 @@
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

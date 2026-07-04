@@ -1,6 +1,6 @@
 # 校园二手交易平台 CLI 工具
 
-CLI 工具位于 `cli/trade-cli.js`，直接使用 Prisma Client 访问数据库，适合课程答辩时在 Windows PowerShell 中快速查看数据、导出报表和管理用户封禁状态。
+CLI 工具位于 `cli/trade-cli.js`，直接使用 Prisma Client 访问数据库，适合在 Windows PowerShell 中快速查看数据、导出报表和管理用户封禁状态。
 
 ## 运行方式
 
@@ -30,7 +30,7 @@ npm run cli -- help
 npm run cli -- products
 ```
 
-最多显示前 20 条商品，按 `id` 升序，包含商品 id、标题、分类、价格、是否在售、卖家信息。
+最多显示前 20 条商品，按 `id` 升序，包含商品 id、标题、分类、价格、是否在售、卖家邮箱或昵称。
 
 ### 查看订单列表
 
@@ -52,7 +52,7 @@ npm run cli -- export-orders
 exports/orders-report.csv
 ```
 
-CSV 字段包括：
+CSV 字段：
 
 ```text
 orderId, productTitle, buyerEmail, sellerEmail, status, amount, createdAt
@@ -87,4 +87,4 @@ npm run cli -- stats
 - CLI 不修改数据库结构。
 - CLI 不调用后端 API，而是直接通过 Prisma Client 操作数据库。
 - 运行前需要确保 `.env` 中的 `DATABASE_URL` 可用。
-- 如果 Prisma Client 不是最新，可先运行 `npx prisma generate`。
+- 如果 Prisma Client 不是最新，可以先运行 `npx prisma generate`。

@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open API Demo - Campus Trade</title>
+    <title>开放 API 演示 - 校园二手交易平台</title>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; font-family: Arial, sans-serif; background: #f3f4f6; color: #111827; }
+        body { margin: 0; min-height: 100vh; font-family: Arial, "Microsoft YaHei", sans-serif; background: #f3f4f6; color: #111827; }
         header { background: #4f46e5; color: white; padding: 18px 28px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
         header h1 { margin: 0; font-size: 22px; }
         button { cursor: pointer; border: 0; border-radius: 6px; padding: 10px 14px; font-weight: 700; }
-        .home-button { background: rgba(255,255,255,.18); color: white; }
+        .header-button { background: rgba(255,255,255,.18); color: white; }
         main { max-width: 1180px; margin: 0 auto; padding: 24px; }
         .panel { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(15,23,42,.06); }
         .filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
@@ -30,48 +30,49 @@
     </style>
 </head>
 <body>
+    <nav></nav>
     <header>
-        <h1>Campus Second-hand Platform Open API Demo</h1>
+        <h1>校园二手交易平台开放 API 演示</h1>
         <div>
-            <button class="home-button" onclick="location.href='index.html'">Back Home</button>
-            <button class="home-button" onclick="location.href='skill-demo.html'">Skill Demo</button>
+            <button class="header-button" onclick="location.href='index.html'">返回首页</button>
+            <button class="header-button" onclick="location.href='skill-demo.html'">Skill 示例</button>
         </div>
     </header>
 
     <main>
         <section class="panel">
             <div class="filters">
-                <input id="keyword" placeholder="Keyword">
+                <input id="keyword" placeholder="关键词">
                 <select id="category">
-                    <option value="">All categories</option>
+                    <option value="">全部类别</option>
                     <option value="教材资料">教材资料</option>
                     <option value="宿舍用品">宿舍用品</option>
                     <option value="电子数码">电子数码</option>
                     <option value="交通出行">交通出行</option>
                     <option value="考试资料">考试资料</option>
                 </select>
-                <input id="minPrice" type="number" min="0" placeholder="Min price">
-                <input id="maxPrice" type="number" min="0" placeholder="Max price">
+                <input id="minPrice" type="number" min="0" placeholder="最低价格">
+                <input id="maxPrice" type="number" min="0" placeholder="最高价格">
                 <div style="display:flex; gap:10px;">
-                    <button class="primary" onclick="queryProducts()">Search</button>
-                    <button class="secondary" onclick="resetFilters()">Reset</button>
+                    <button class="primary" onclick="queryProducts()">查询</button>
+                    <button class="secondary" onclick="resetFilters()">重置</button>
                 </div>
             </div>
             <div id="error" class="error"></div>
         </section>
 
         <section class="panel">
-            <h2>Request API URL</h2>
-            <div id="requestUrl" class="url-box">No request yet</div>
+            <h2>请求 API URL</h2>
+            <div id="requestUrl" class="url-box">暂未请求</div>
         </section>
 
         <section class="content-grid">
             <div class="panel">
-                <h2>Product Cards</h2>
+                <h2>商品卡片</h2>
                 <div id="cards" class="cards"></div>
             </div>
             <div class="panel">
-                <h2>Raw JSON</h2>
+                <h2>原始 JSON</h2>
                 <pre id="jsonResult">{}</pre>
             </div>
         </section>
@@ -102,33 +103,33 @@
             const url = buildUrl();
             error.textContent = '';
             requestUrl.textContent = url;
-            cards.innerHTML = '<div class="card">Loading open API...</div>';
+            cards.innerHTML = '<div class="card">正在调用开放 API...</div>';
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 jsonResult.textContent = JSON.stringify(data, null, 2);
-                if (!response.ok) throw new Error(data.error || 'Request failed.');
+                if (!response.ok) throw new Error(data.error || '请求失败');
                 renderCards(data.products || []);
             } catch (err) {
-                error.textContent = err.message || 'Network error.';
-                cards.innerHTML = '<div class="card">Request failed. Please check whether the backend is running.</div>';
+                error.textContent = err.message || '网络错误';
+                cards.innerHTML = '<div class="card">请求失败，请确认后端服务正在运行。</div>';
             }
         }
 
         function renderCards(products) {
             const cards = document.getElementById('cards');
             if (!products.length) {
-                cards.innerHTML = '<div class="card">No matched products.</div>';
+                cards.innerHTML = '<div class="card">没有匹配的商品。</div>';
                 return;
             }
             cards.innerHTML = products.map((product) => `
                 <article class="card">
-                    <h3>${escapeHtml(product.title || 'Untitled product')}</h3>
+                    <h3>${escapeHtml(product.title || '未命名商品')}</h3>
                     <p>${escapeHtml(product.description || '')}</p>
                     <div class="meta">
-                        <span>Category: ${escapeHtml(product.category || '-')}</span>
-                        <span>Condition: ${escapeHtml(product.condition || '-')}</span>
-                        <span>Seller: ${escapeHtml(product.seller?.nickname || 'Unknown')}</span>
+                        <span>类别：${escapeHtml(product.category || '-')}</span>
+                        <span>成色：${escapeHtml(product.condition || '-')}</span>
+                        <span>卖家：${escapeHtml(product.seller?.nickname || '未知')}</span>
                     </div>
                     <div class="price">¥${product.priceFiat ?? '-'}</div>
                 </article>
@@ -154,5 +155,6 @@
 
         queryProducts();
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

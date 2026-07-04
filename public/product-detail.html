@@ -1,68 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Detail - Campus Trade</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>商品详情 - 校园二手交易平台</title>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <nav></nav>
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-            <h1 class="text-xl font-bold">Product Detail</h1>
-            <div class="flex flex-wrap gap-3 text-sm">
-                <button @click="goHome" class="hover:text-indigo-200">Market</button>
-                <button @click="goMyProducts" class="hover:text-indigo-200">My Products</button>
-                <button @click="goDashboard" class="hover:text-indigo-200">My Orders</button>
-                <button @click="goSkillDemo" class="hover:text-indigo-200">Skill Demo</button>
-                <button v-if="isAdmin" @click="goAdmin" class="hover:text-indigo-200">Admin</button>
-            </div>
-        </nav>
-
         <main class="container mx-auto p-6">
-            <div v-if="loading" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">Loading product...</div>
+            <div v-if="loading" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">正在加载商品...</div>
             <div v-else-if="error" class="bg-white rounded-xl shadow p-10 text-center text-red-600">{{ error }}</div>
 
             <section v-else class="bg-white rounded-xl shadow overflow-hidden grid grid-cols-1 lg:grid-cols-2">
                 <div class="bg-gray-100 min-h-[360px]">
                     <img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.title" class="w-full h-full object-cover">
-                    <div v-else class="w-full h-full min-h-[360px] flex items-center justify-center text-gray-400">No image</div>
+                    <div v-else class="w-full h-full min-h-[360px] flex items-center justify-center text-gray-400">暂无图片</div>
                 </div>
                 <div class="p-8">
                     <div class="flex items-center gap-3 mb-4">
                         <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">{{ product.category }}</span>
                         <span class="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">{{ product.condition }}</span>
                     </div>
-                    <h2 class="text-3xl font-black text-gray-900 mb-4">{{ product.title }}</h2>
+                    <h1 class="text-3xl font-black text-gray-900 mb-4">{{ product.title }}</h1>
                     <p class="text-gray-600 leading-7 mb-6 whitespace-pre-wrap">{{ product.description }}</p>
                     <div class="mb-6">
                         <div class="text-4xl font-black text-red-500">¥{{ product.priceFiat }}</div>
-                        <div v-if="product.originalPrice" class="text-gray-400 line-through mt-1">Original ¥{{ product.originalPrice }}</div>
+                        <div v-if="product.originalPrice" class="text-gray-400 line-through mt-1">原价 ¥{{ product.originalPrice }}</div>
                     </div>
                     <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm text-gray-600">
-                        <div class="font-bold text-gray-800 mb-1">Seller</div>
+                        <div class="font-bold text-gray-800 mb-1">卖家信息</div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <span>{{ product.seller?.nickname || 'Unknown seller' }}</span>
-                            <button v-if="product.seller?.id" @click="viewSellerProfile" class="text-indigo-600 font-bold">View Credit</button>
-                            <button v-if="product.seller?.email" @click="contactSeller" class="text-green-600 font-bold">Contact</button>
+                            <span>{{ product.seller?.nickname || '未知卖家' }}</span>
+                            <button v-if="product.seller?.id" @click="viewSellerProfile" class="text-indigo-600 font-bold">查看信誉</button>
+                            <button v-if="product.seller?.email" @click="contactSeller" class="text-green-600 font-bold">联系卖家</button>
                         </div>
-                        <div v-if="product.seller?.creditRating">Credit score: {{ product.seller.creditRating }}</div>
+                        <div v-if="product.seller?.creditRating">信用分：{{ product.seller.creditRating }}</div>
                     </div>
                     <div class="space-y-3">
-                        <button @click="buyProduct" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg">I Want It</button>
-                        <button @click="reportProduct" class="w-full bg-red-50 text-red-600 font-bold p-3 rounded-lg">Report Product</button>
+                        <button @click="buyProduct" class="w-full bg-indigo-600 text-white font-bold p-3 rounded-lg">我想要</button>
+                        <button @click="reportProduct" class="w-full bg-red-50 text-red-600 font-bold p-3 rounded-lg">举报商品</button>
                     </div>
                 </div>
             </section>
 
             <section v-if="recommendations.length" class="mt-6 bg-white rounded-xl shadow p-6">
-                <h2 class="text-xl font-black text-gray-900 mb-4">Similar Products</h2>
+                <h2 class="text-xl font-black text-gray-900 mb-4">相似商品</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <a v-for="item in recommendations" :key="item.id" :href="`product-detail.html?id=${item.id}`" class="block border rounded-lg overflow-hidden hover:shadow-md">
                         <div class="h-28 bg-gray-100">
-                            <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover" alt="Recommended product">
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
+                            <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover" alt="相似商品图片">
+                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-sm">暂无图片</div>
                         </div>
                         <div class="p-3">
                             <div class="font-bold text-indigo-700">{{ item.title }}</div>
@@ -77,37 +67,37 @@
     <script>
         const { createApp, ref, onMounted } = Vue;
         const API_BASE = window.location.origin;
+
         createApp({
             setup() {
-                const token = localStorage.getItem('jwt_token');
+                const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
                 const product = ref(null);
                 const loading = ref(true);
                 const error = ref('');
                 const recommendations = ref([]);
-                const isAdmin = ref(false);
                 const id = new URLSearchParams(window.location.search).get('id');
                 const authHeaders = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
                 onMounted(() => {
-                    if (!token) { alert('Please login first.'); window.location.href = 'login.html'; return; }
-                    checkAdminAccess();
+                    if (!token) { alert('请先登录'); window.location.href = 'login.html'; return; }
                     fetchProduct();
                 });
-                const checkAdminAccess = () => {
-                    try { isAdmin.value = JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN'; }
-                    catch (e) { isAdmin.value = localStorage.getItem('role') === 'ADMIN'; }
-                };
+
                 const fetchProduct = async () => {
-                    if (!id) { error.value = 'Missing product id.'; loading.value = false; return; }
+                    if (!id) { error.value = '缺少商品 ID'; loading.value = false; return; }
                     try {
                         const res = await fetch(`${API_BASE}/api/products/${id}`);
                         const data = await res.json();
-                        if (!res.ok) { error.value = data.error || 'Product not found.'; return; }
+                        if (!res.ok) { error.value = data.error || '商品不存在'; return; }
                         product.value = data;
                         fetchRecommendations(data);
-                    } catch (e) { error.value = 'Network error. Cannot load product.'; }
-                    finally { loading.value = false; }
+                    } catch (e) {
+                        error.value = '网络错误，无法加载商品';
+                    } finally {
+                        loading.value = false;
+                    }
                 };
+
                 const fetchRecommendations = async (currentProduct) => {
                     if (!currentProduct?.category) return;
                     try {
@@ -115,11 +105,14 @@
                         const res = await fetch(`${API_BASE}/api/products?${params.toString()}`);
                         const data = await res.json();
                         recommendations.value = (data.products || []).filter(item => item.id !== currentProduct.id).slice(0, 3);
-                    } catch (e) { recommendations.value = []; }
+                    } catch (e) {
+                        recommendations.value = [];
+                    }
                 };
+
                 const buyProduct = async () => {
                     if (!product.value) return;
-                    if (!confirm(`Buy ${product.value.title}?`)) return;
+                    if (!confirm(`确认购买「${product.value.title}」？`)) return;
                     const simulatedCryptoAmount = parseFloat((product.value.priceFiat / 20000).toFixed(4)) || 0.1;
                     try {
                         const res = await fetch(`${API_BASE}/api/orders`, {
@@ -128,14 +121,15 @@
                             body: JSON.stringify({ productId: product.value.id, cryptoAmount: simulatedCryptoAmount })
                         });
                         const data = await res.json();
-                        if (!res.ok) { alert(`Order failed: ${data.error}`); return; }
-                        alert('Order created. Redirecting to order center.');
+                        if (!res.ok) { alert(`下单失败：${data.error}`); return; }
+                        alert('下单成功，即将进入订单中心。');
                         window.location.href = 'dashboard.html';
-                    } catch (e) { alert('Network error.'); }
+                    } catch (e) { alert('网络错误'); }
                 };
+
                 const reportProduct = async () => {
                     if (!product.value) return;
-                    const reason = prompt('Please enter report reason');
+                    const reason = prompt('请输入举报原因');
                     if (!reason || !reason.trim()) return;
                     try {
                         const res = await fetch(`${API_BASE}/api/reports`, {
@@ -144,26 +138,25 @@
                             body: JSON.stringify({ productId: product.value.id, reason })
                         });
                         const data = await res.json();
-                        alert(data.message || data.error || 'Report submitted.');
-                    } catch (e) { alert('Network error.'); }
+                        alert(data.message || data.error || '举报已提交');
+                    } catch (e) { alert('网络错误'); }
                 };
+
                 const contactSeller = () => {
                     const email = product.value?.seller?.email;
                     if (!email) return;
-                    window.location.href = `mailto:${email}?subject=Campus product inquiry: ${encodeURIComponent(product.value.title)}`;
+                    window.location.href = `mailto:${email}?subject=校园二手商品咨询：${encodeURIComponent(product.value.title)}`;
                 };
+
                 const viewSellerProfile = () => {
                     if (!product.value?.seller?.id) return;
                     window.location.href = `user-profile.html?id=${product.value.seller.id}`;
                 };
-                const goHome = () => { window.location.href = 'index.html'; };
-                const goMyProducts = () => { window.location.href = 'my-products.html'; };
-                const goDashboard = () => { window.location.href = 'dashboard.html'; };
-                const goSkillDemo = () => { window.location.href = 'skill-demo.html'; };
-                const goAdmin = () => { window.location.href = 'admin.html'; };
-                return { product, loading, error, recommendations, isAdmin, buyProduct, reportProduct, contactSeller, viewSellerProfile, goHome, goMyProducts, goDashboard, goSkillDemo, goAdmin };
+
+                return { product, loading, error, recommendations, buyProduct, reportProduct, contactSeller, viewSellerProfile };
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

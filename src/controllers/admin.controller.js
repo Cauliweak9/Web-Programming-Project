@@ -61,6 +61,19 @@ export const banUserForAdmin = async (req, res) => {
             return res.status(400).json({ error: '不能封禁当前登录的管理员账号' });
         }
 
+        const target = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        });
+
+        if (!target) {
+            return res.status(404).json({ error: '用户不存在' });
+        }
+
+        if (target.role === 'ADMIN') {
+            return res.status(400).json({ error: '不能封禁管理员账号' });
+        }
+
         const user = await prisma.user.update({
             where: { id: userId },
             data: { isBanned: true },
@@ -161,7 +174,8 @@ export const getAllOrdersForAdmin = async (req, res) => {
             include: {
                 buyer: { select: { id: true, nickname: true, email: true } },
                 seller: { select: { id: true, nickname: true, email: true } },
-                product: { select: { id: true, title: true, priceFiat: true } }
+                product: { select: { id: true, title: true, priceFiat: true } },
+                reviews: true
             },
             orderBy: { id: 'desc' }
         });
@@ -175,16 +189,19 @@ export const getAllOrdersForAdmin = async (req, res) => {
 export const arbitrateOrder = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { decision } = req.body;
+        const decision = req.body.decision || req.body.action;
 
         if (!['RELEASE', 'REFUND'].includes(decision)) {
             return res.status(400).json({ error: '仲裁决定不合法，必须为 RELEASE 或 REFUND' });
         }
 
         const order = await prisma.order.findUnique({ where: { id: Number(orderId) } });
-        if (!order) return res.status(404).json({ error: '订单不存在' });
+        if (!order) {
+            return res.status(404).json({ error: '订单不存在' });
+        }
+
         if (order.status !== 'DISPUTED') {
-            return res.status(400).json({ error: '只有处于 DISPUTED 状态的订单才能进行仲裁' });
+            return res.status(400).json({ error: '只有 DISPUTED 状态的订单才能仲裁' });
         }
 
         const targetStatus = decision === 'RELEASE' ? 'RELEASED' : 'REFUNDED';
@@ -194,11 +211,12 @@ export const arbitrateOrder = async (req, res) => {
         });
 
         res.json({
-            message: `管理员仲裁成功，订单状态已变更为: ${targetStatus}`,
+            message: `管理员仲裁成功，订单状态已变更为 ${targetStatus}`,
             orderId: updatedOrder.id,
             status: updatedOrder.status
         });
     } catch (error) {
+        console.error('仲裁执行失败:', error);
         res.status(500).json({ error: '仲裁执行失败' });
     }
 };

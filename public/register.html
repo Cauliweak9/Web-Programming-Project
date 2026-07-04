@@ -1,27 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Campus Trade</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>用户注册 - 校园二手交易平台</title>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div id="app" class="bg-white w-full max-w-md rounded-xl shadow p-8">
-        <h1 class="text-2xl font-black text-indigo-700 mb-6">Create Account</h1>
-        <div class="space-y-4">
-            <input v-model="form.email" class="w-full border rounded px-3 py-2" placeholder="Email">
-            <input v-model="form.nickname" class="w-full border rounded px-3 py-2" placeholder="Nickname">
-            <input v-model="form.password" type="password" class="w-full border rounded px-3 py-2" placeholder="Password">
-            <button @click="register" class="w-full bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">Register</button>
-            <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
-            <p class="text-sm text-gray-500">Already have an account? <a class="text-indigo-600 font-bold" href="login.html">Login</a></p>
+<body class="bg-gray-100 min-h-screen">
+    <nav></nav>
+    <main class="min-h-[calc(100vh-72px)] flex items-center justify-center p-4">
+        <div id="app" class="bg-white w-full max-w-md rounded-xl shadow p-8">
+            <h1 class="text-2xl font-black text-indigo-700 mb-6">创建账号</h1>
+            <div class="space-y-4">
+                <input v-model="form.email" class="w-full border rounded px-3 py-2" placeholder="邮箱">
+                <input v-model="form.nickname" class="w-full border rounded px-3 py-2" placeholder="昵称">
+                <input v-model="form.password" type="password" class="w-full border rounded px-3 py-2" placeholder="密码">
+                <button @click="register" class="w-full bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">注册</button>
+                <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
+                <p class="text-sm text-gray-500">已有账号？<a class="text-indigo-600 font-bold" href="login.html">去登录</a></p>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
         const { createApp, ref } = Vue;
+
         createApp({
             setup() {
                 const form = ref({ email: '', nickname: '', password: '' });
@@ -30,7 +34,7 @@
                 const register = async () => {
                     error.value = '';
                     if (!form.value.email || !form.value.nickname || !form.value.password) {
-                        error.value = 'Email, nickname and password are required.';
+                        error.value = '邮箱、昵称和密码不能为空';
                         return;
                     }
 
@@ -42,13 +46,13 @@
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            error.value = data.error || 'Register failed.';
+                            error.value = data.error || '注册失败';
                             return;
                         }
-                        alert('Register success. Please login.');
+                        alert('注册成功，请登录');
                         window.location.href = 'login.html';
                     } catch (e) {
-                        error.value = 'Network error.';
+                        error.value = '网络错误';
                     }
                 };
 
@@ -56,5 +60,6 @@
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

@@ -1,46 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Credit Profile - Campus Trade</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>用户信誉主页 - 校园二手交易平台</title>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <nav></nav>
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-            <h1 class="text-xl font-bold">User Credit Profile</h1>
-            <div class="flex gap-3 text-sm">
-                <button @click="goHome" class="hover:text-indigo-200">Home</button>
-                <button @click="goOrders" class="hover:text-indigo-200">My Orders</button>
-                <button @click="goSkill" class="hover:text-indigo-200">Skill Demo</button>
-            </div>
-        </nav>
-
         <main class="container mx-auto p-6 max-w-4xl">
-            <div v-if="loading" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">Loading profile...</div>
+            <div v-if="loading" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">正在加载信誉信息...</div>
             <div v-else-if="error" class="bg-white rounded-xl shadow p-10 text-center">
                 <p class="text-red-600 font-bold mb-4">{{ error }}</p>
-                <p v-if="missingId" class="text-gray-500 mb-4">Please enter this page from product detail or review records.</p>
-                <button @click="goHome" class="bg-indigo-600 text-white px-4 py-2 rounded">Back Home</button>
+                <p v-if="missingId" class="text-gray-500 mb-4">请从商品详情页或评价记录进入用户信誉主页。</p>
+                <button @click="goHome" class="bg-indigo-600 text-white px-4 py-2 rounded">返回首页</button>
             </div>
 
             <template v-else>
                 <section class="bg-white rounded-xl shadow p-6 mb-6">
-                    <h2 class="text-3xl font-black text-gray-900">{{ profile.user.nickname }}</h2>
+                    <h1 class="text-3xl font-black text-gray-900">{{ profile.user.nickname }}</h1>
                     <p class="text-gray-500 mt-1">{{ profile.user.email }}</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                         <div class="bg-indigo-50 rounded-lg p-4">
-                            <div class="text-sm text-indigo-700 font-bold">Credit Score</div>
+                            <div class="text-sm text-indigo-700 font-bold">信用分</div>
                             <div class="text-3xl font-black text-indigo-900">{{ profile.user.creditRating }}</div>
                         </div>
                         <div class="bg-yellow-50 rounded-lg p-4">
-                            <div class="text-sm text-yellow-700 font-bold">Average Rating</div>
-                            <div class="text-3xl font-black text-yellow-700">{{ profile.averageRating || 0 }} star</div>
+                            <div class="text-sm text-yellow-700 font-bold">平均星级</div>
+                            <div class="text-3xl font-black text-yellow-700">{{ profile.averageRating || 0 }} 星</div>
                         </div>
                         <div class="bg-green-50 rounded-lg p-4">
-                            <div class="text-sm text-green-700 font-bold">Review Count</div>
+                            <div class="text-sm text-green-700 font-bold">评价数量</div>
                             <div class="text-3xl font-black text-green-900">{{ profile.reviewsCount }}</div>
                         </div>
                     </div>
@@ -48,7 +40,7 @@
 
                 <section class="space-y-4">
                     <div v-if="profile.reviews.length === 0" class="bg-white rounded-xl shadow p-10 text-center text-gray-500">
-                        No public reviews yet.
+                        暂无公开评价。
                     </div>
                     <article v-for="review in profile.reviews" :key="review.id" class="bg-white rounded-xl shadow p-5">
                         <div class="flex justify-between items-start gap-4">
@@ -56,7 +48,7 @@
                                 <div class="text-yellow-400 text-xl">{{ stars(review.rating) }}</div>
                                 <p class="text-gray-700 mt-2 whitespace-pre-wrap">{{ review.content }}</p>
                                 <p class="text-sm text-gray-400 mt-3">
-                                    From {{ review.reviewer?.nickname || 'Anonymous user' }}
+                                    来自 {{ review.reviewer?.nickname || '匿名用户' }}
                                     <span v-if="review.order?.product"> - {{ review.order.product.title }}</span>
                                 </p>
                             </div>
@@ -85,7 +77,7 @@
                 async function fetchProfile() {
                     if (!id) {
                         missingId.value = true;
-                        error.value = 'Missing user id.';
+                        error.value = '缺少用户 ID';
                         loading.value = false;
                         return;
                     }
@@ -93,26 +85,25 @@
                         const res = await fetch(`${API_BASE}/api/reviews/user/${id}`);
                         const data = await res.json();
                         if (!res.ok) {
-                            error.value = data.error || 'User not found.';
+                            error.value = data.error || '用户不存在';
                             return;
                         }
                         profile.value = data;
                     } catch (e) {
-                        error.value = 'Network error. Cannot load profile.';
+                        error.value = '网络错误，无法加载信誉主页';
                     } finally {
                         loading.value = false;
                     }
                 }
 
-                const stars = (rating) => '*'.repeat(rating) + '-'.repeat(5 - rating);
+                const stars = (rating) => '★'.repeat(rating) + '☆'.repeat(5 - rating);
                 const formatDate = (date) => new Date(date).toLocaleString();
                 const goHome = () => { window.location.href = 'index.html'; };
-                const goOrders = () => { window.location.href = 'dashboard.html'; };
-                const goSkill = () => { window.location.href = 'skill-demo.html'; };
 
-                return { profile, loading, error, missingId, stars, formatDate, goHome, goOrders, goSkill };
+                return { profile, loading, error, missingId, stars, formatDate, goHome };
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>

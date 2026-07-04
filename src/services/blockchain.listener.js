@@ -4,16 +4,22 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-// 简单的 INI 解析函数
 function getWeb3Mode() {
     try {
         const iniPath = path.resolve(process.cwd(), 'config.ini');
-        if (!fs.existsSync(iniPath)) return true; // 默认开启
+        if (!fs.existsSync(iniPath)) return false;
+
         const content = fs.readFileSync(iniPath, 'utf8');
-        const match = content.match(/WEB3_MODE\s*=\s*(\w+)/);
-        return match ? match[1].toUpperCase() === 'TRUE' : true;
+        const line = content
+            .split(/\r?\n/)
+            .map((item) => item.trim())
+            .find((item) => item && !item.startsWith('#') && /^WEB3_MODE\s*=/.test(item));
+
+        if (!line) return false;
+        const value = line.split('=')[1]?.trim().toUpperCase();
+        return value === 'TRUE';
     } catch (e) {
-        return true;
+        return false;
     }
 }
 
@@ -21,7 +27,7 @@ export const startBlockchainListener = async () => {
     const isWeb3Mode = getWeb3Mode();
 
     if (!isWeb3Mode) {
-        console.log("ℹ️ [系统配置] 当前处于 [Web2 模拟模式]，跳过智能合约事件监听器初始化。");
+        console.log('[System] WEB3_MODE is FALSE. Running in Web2 simulation mode.');
         return;
     }
 
@@ -34,22 +40,22 @@ export const startBlockchainListener = async () => {
         const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
         const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, abi, provider);
 
-        console.log(`🔗 [Web3 模式激活] 链上监听器已启动，正在监控合约: ${process.env.CONTRACT_ADDRESS}`);
+        console.log(`[Web3] Blockchain listener started for contract: ${process.env.CONTRACT_ADDRESS}`);
 
-        contract.on("FundsLocked", async (orderId, buyer, seller, amount, event) => {
+        contract.on('FundsLocked', async (orderId, buyer, seller, amount, event) => {
             const parsedOrderId = Number(orderId);
-            console.log(`⚡ 捕获到锁仓事件！订单ID: ${parsedOrderId}`);
+            console.log(`[Web3] FundsLocked event received. Order ID: ${parsedOrderId}`);
             try {
                 await prisma.order.update({
                     where: { id: parsedOrderId },
                     data: { status: 'LOCKED', txHash: event.log.transactionHash }
                 });
-                console.log(`✅ 订单 ${parsedOrderId} 状态已更新为 LOCKED`);
+                console.log(`[Web3] Order ${parsedOrderId} updated to LOCKED.`);
             } catch (dbError) {
-                console.error(`❌ 数据库更新失败:`, dbError);
+                console.error('[Web3] Failed to update order status:', dbError);
             }
         });
     } catch (error) {
-        console.error("❌ 链上监听器初始化失败 (请检查 Docker Anvil 是否启动):");
+        console.error('[Web3] Failed to initialize blockchain listener. Check RPC_URL, CONTRACT_ADDRESS and Anvil.');
     }
 };

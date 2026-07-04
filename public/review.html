@@ -1,45 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Seller - Campus Trade</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>评价卖家 - 校园二手交易平台</title>
+    <script src="/vendor/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <nav></nav>
     <div id="app">
-        <nav class="bg-indigo-600 text-white p-4 shadow flex justify-between items-center">
-            <h1 class="text-xl font-bold">Review Seller</h1>
-            <button @click="goBack" class="bg-white/15 px-4 py-1.5 rounded hover:bg-white/25">Back to Orders</button>
-        </nav>
-
         <main class="container mx-auto p-6 max-w-3xl">
-            <div v-if="loading" class="bg-white rounded-xl shadow p-8 text-center text-gray-500">Loading order...</div>
+            <div v-if="loading" class="bg-white rounded-xl shadow p-8 text-center text-gray-500">正在加载订单...</div>
             <div v-else-if="error" class="bg-white rounded-xl shadow p-8 text-center text-red-600">{{ error }}</div>
 
             <section v-else class="bg-white rounded-xl shadow p-6">
-                <h2 class="text-2xl font-black text-gray-900 mb-2">{{ order.product?.title || 'Order #' + order.id }}</h2>
-                <p class="text-gray-500 mb-6">Seller: {{ order.seller?.nickname || order.seller?.email || order.sellerId }}</p>
+                <h1 class="text-2xl font-black text-gray-900 mb-2">{{ order.product?.title || '订单 #' + order.id }}</h1>
+                <p class="text-gray-500 mb-6">卖家：{{ order.seller?.nickname || order.seller?.email || order.sellerId }}</p>
 
-                <label class="block text-sm font-bold text-gray-700 mb-2">Rating</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">星级评分</label>
                 <div class="flex gap-2 mb-5">
                     <button v-for="n in 5" :key="n" @click="rating = n" class="text-3xl" :class="n <= rating ? 'text-yellow-400' : 'text-gray-300'">★</button>
                 </div>
 
-                <label class="block text-sm font-bold text-gray-700 mb-2">Review Content</label>
-                <textarea v-model="content" rows="5" class="w-full border rounded p-3 mb-4" placeholder="Write your review..."></textarea>
+                <label class="block text-sm font-bold text-gray-700 mb-2">文字评价</label>
+                <textarea v-model="content" rows="5" class="w-full border rounded p-3 mb-4" placeholder="请写下本次交易体验..."></textarea>
 
                 <p v-if="submitError" class="text-red-600 mb-3">{{ submitError }}</p>
 
                 <div v-if="submitted" class="bg-green-50 border border-green-200 text-green-700 rounded p-4 mb-4">
-                    Review submitted successfully.
-                    <button @click="viewSellerProfile" class="ml-2 text-indigo-600 font-bold">View seller profile</button>
+                    评价提交成功。
+                    <button @click="viewSellerProfile" class="ml-2 text-indigo-600 font-bold">查看卖家信誉</button>
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button @click="goBack" class="bg-gray-200 text-gray-700 px-4 py-2 rounded">Cancel</button>
-                    <button @click="submitReview" :disabled="submitted" class="bg-indigo-600 disabled:bg-indigo-300 text-white px-4 py-2 rounded">Submit Review</button>
+                    <button @click="goBack" class="bg-gray-200 text-gray-700 px-4 py-2 rounded">返回订单</button>
+                    <button @click="submitReview" :disabled="submitted" class="bg-indigo-600 disabled:bg-indigo-300 text-white px-4 py-2 rounded">提交评价</button>
                 </div>
             </section>
         </main>
@@ -51,7 +47,7 @@
 
         createApp({
             setup() {
-                const token = localStorage.getItem('jwt_token');
+                const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
                 const orderId = new URLSearchParams(window.location.search).get('orderId');
                 const order = ref(null);
                 const rating = ref(5);
@@ -69,7 +65,7 @@
 
                 onMounted(() => {
                     if (!token) {
-                        alert('Please login first.');
+                        alert('请先登录');
                         window.location.href = 'login.html';
                         return;
                     }
@@ -81,7 +77,7 @@
 
                 const fetchOrder = async () => {
                     if (!orderId) {
-                        error.value = 'Missing order id.';
+                        error.value = '缺少订单 ID';
                         loading.value = false;
                         return;
                     }
@@ -90,24 +86,24 @@
                         const data = await res.json();
                         const found = (data.orders || data || []).find(item => String(item.id) === String(orderId));
                         if (!found) {
-                            error.value = 'Order not found or no permission.';
+                            error.value = '订单不存在或无权访问';
                             return;
                         }
                         if (found.buyerId !== myUserId.value) {
-                            error.value = 'Only the buyer can review this order.';
+                            error.value = '只有买家可以评价该订单';
                             return;
                         }
                         if (found.status !== 'COMPLETED') {
-                            error.value = 'Only completed orders can be reviewed.';
+                            error.value = '只有已完成订单才能评价';
                             return;
                         }
                         if ((found.reviews || []).some(review => review.reviewerId === myUserId.value)) {
-                            error.value = 'This order has already been reviewed.';
+                            error.value = '该订单已经评价过';
                             return;
                         }
                         order.value = found;
                     } catch (e) {
-                        error.value = 'Network error. Cannot load order.';
+                        error.value = '网络错误，无法加载订单';
                     } finally {
                         loading.value = false;
                     }
@@ -116,7 +112,7 @@
                 const submitReview = async () => {
                     submitError.value = '';
                     if (!content.value.trim()) {
-                        submitError.value = 'Please write review content.';
+                        submitError.value = '请填写评价内容';
                         return;
                     }
                     try {
@@ -132,12 +128,12 @@
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            submitError.value = data.error || 'Submit failed.';
+                            submitError.value = data.error || '提交失败';
                             return;
                         }
                         submitted.value = true;
                     } catch (e) {
-                        submitError.value = 'Network error.';
+                        submitError.value = '网络错误';
                     }
                 };
 
@@ -151,5 +147,6 @@
             }
         }).mount('#app');
     </script>
+    <script src="/nav.js"></script>
 </body>
 </html>
