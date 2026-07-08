@@ -6,6 +6,7 @@ exports/*.csv
 # Foundry / Solidity build artifacts
 cache/
 out/
+broadcast/
 
 # OS / editor
 .DS_Store

@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { parseEther } from 'ethers';
+import { getWeb3Config } from '../config/app.config.js';
+import { verifyEscrowEvent } from '../services/web3.service.js';
 
 const prisma = new PrismaClient();
 
@@ -195,7 +198,13 @@ export const arbitrateOrder = async (req, res) => {
             return res.status(400).json({ error: '仲裁决定不合法，必须为 RELEASE 或 REFUND' });
         }
 
-        const order = await prisma.order.findUnique({ where: { id: Number(orderId) } });
+        const order = await prisma.order.findUnique({
+            where: { id: Number(orderId) },
+            include: {
+                buyer: { select: { walletAddress: true } },
+                seller: { select: { walletAddress: true } }
+            }
+        });
         if (!order) {
             return res.status(404).json({ error: '订单不存在' });
         }
@@ -204,10 +213,25 @@ export const arbitrateOrder = async (req, res) => {
             return res.status(400).json({ error: '只有 DISPUTED 状态的订单才能仲裁' });
         }
 
+        const txHash = req.body.txHash;
         const targetStatus = decision === 'RELEASE' ? 'RELEASED' : 'REFUNDED';
+        const web3Config = getWeb3Config();
+
+        if (web3Config.web3Mode) {
+            if (!txHash) return res.status(400).json({ error: 'Web3 模式必须提交仲裁交易哈希' });
+            const amountWei = parseEther(String(order.cryptoAmount));
+            await verifyEscrowEvent({
+                order,
+                action: 'ARBITRATE',
+                txHash,
+                buyerShare: decision === 'REFUND' ? amountWei : 0n,
+                sellerShare: decision === 'RELEASE' ? amountWei : 0n
+            });
+        }
+
         const updatedOrder = await prisma.order.update({
             where: { id: order.id },
-            data: { status: targetStatus }
+            data: { status: targetStatus, ...(web3Config.web3Mode ? { arbitrationTxHash: txHash } : {}) }
         });
 
         res.json({

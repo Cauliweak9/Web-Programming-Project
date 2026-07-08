@@ -44,14 +44,23 @@ contract MarketplaceEscrow is ReentrancyGuard {
     event OrderCancelledByBuyer(uint256 indexed orderId);
     event DisputeRaised(uint256 indexed orderId, address raisedBy);
     event DisputeResolved(uint256 indexed orderId, uint256 buyerShare, uint256 sellerShare);
+    event ArbiterChanged(address indexed oldArbiter, address indexed newArbiter);
 
     modifier onlyArbiter() {
         require(msg.sender == arbiter, "Only arbiter can call this");
         _;
     }
 
-    constructor() {
-        arbiter = msg.sender;
+    constructor(address initialArbiter) {
+        require(initialArbiter != address(0), "Invalid arbiter");
+        arbiter = initialArbiter;
+        emit ArbiterChanged(address(0), initialArbiter);
+    }
+
+    function transferArbiter(address newArbiter) external onlyArbiter {
+        require(newArbiter != address(0), "Invalid arbiter");
+        emit ArbiterChanged(arbiter, newArbiter);
+        arbiter = newArbiter;
     }
 
     /**
@@ -129,6 +138,19 @@ contract MarketplaceEscrow is ReentrancyGuard {
         require(success, "Transfer to seller failed");
 
         emit FundsReleased(orderId);
+    }
+
+    /**
+     * @notice 买家发起争议，暂停自动放款，等待仲裁官处理
+     */
+    function raiseDispute(uint256 orderId) external {
+        Order storage order = orders[orderId];
+        require(order.status == OrderStatus.Shipped, "Only shipped orders can be disputed");
+        require(msg.sender == order.buyer, "Only buyer can raise dispute");
+
+        order.status = OrderStatus.Disputed;
+
+        emit DisputeRaised(orderId, msg.sender);
     }
 
     /**

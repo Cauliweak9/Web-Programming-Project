@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "seed": "prisma db seed",
-    "cli": "node cli/trade-cli.js"
+    "cli": "node cli/trade-cli.js",
+    "smoke": "node scripts/smoke-test.js"
   },
   "keywords": [],
   "author": "",

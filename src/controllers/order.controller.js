@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
+import { getWeb3Config } from '../config/app.config.js';
+import { verifyEscrowEvent } from '../services/web3.service.js';
 const prisma = new PrismaClient();
 
 export const createOrder = async (req, res) => {
@@ -19,7 +19,8 @@ export const createOrder = async (req, res) => {
         }
 
         const product = await prisma.product.findUnique({
-            where: { id: Number(productId) }
+            where: { id: Number(productId) },
+            include: { seller: { select: { walletAddress: true } } }
         });
 
         if (!product) {
@@ -34,29 +35,32 @@ export const createOrder = async (req, res) => {
             return res.status(400).json({ error: "防刷提示：你不能购买自己发布的商品" });
         }
 
-        // 悲观锁数据库事务
+        const web3Config = getWeb3Config();
+        const buyer = await prisma.user.findUnique({ where: { id: Number(buyerId) }, select: { walletAddress: true } });
+
+        if (web3Config.web3Mode) {
+            if (!web3Config.contractAddress) return res.status(400).json({ error: "Web3 模式未配置合约地址" });
+            if (!buyer?.walletAddress) return res.status(400).json({ error: "请先在个人信息页绑定买家钱包地址" });
+            if (!product.seller?.walletAddress) return res.status(400).json({ error: "卖家尚未绑定钱包地址，暂不能进行链上交易" });
+        }
+
         const newOrder = await prisma.$transaction(async (tx) => {
-            // 1. 将商品下架
             await tx.product.update({
                 where: { id: product.id },
                 data: { isAvailable: false }
             });
 
-            // 2. 使用标准的 connect 语法创建 PENDING 订单
             return await tx.order.create({
                 data: {
                     status: 'PENDING',
                     cryptoAmount: String(cryptoAmount),
-                    // 👇 改用关系型连接，规避标量外键解析迷思
-                    product: {
-                        connect: { id: product.id }
-                    },
-                    buyer: {
-                        connect: { id: Number(buyerId) }
-                    },
-                    seller: {
-                        connect: { id: product.sellerId }
-                    }
+                    chainId: web3Config.web3Mode ? web3Config.chainId : null,
+                    contractAddress: web3Config.web3Mode ? web3Config.contractAddress : null,
+                    buyerAddress: web3Config.web3Mode ? buyer.walletAddress : null,
+                    sellerAddress: web3Config.web3Mode ? product.seller.walletAddress : null,
+                    product: { connect: { id: product.id } },
+                    buyer: { connect: { id: Number(buyerId) } },
+                    seller: { connect: { id: product.sellerId } }
                 }
             });
         });
@@ -65,7 +69,12 @@ export const createOrder = async (req, res) => {
             message: "订单创建成功，请在链上锁定资金",
             orderId: newOrder.id,
             status: newOrder.status,
-            cryptoAmount: newOrder.cryptoAmount
+            cryptoAmount: newOrder.cryptoAmount,
+            web3: web3Config.web3Mode ? {
+                chainId: newOrder.chainId,
+                contractAddress: newOrder.contractAddress,
+                sellerAddress: newOrder.sellerAddress
+            } : null
         });
 
     } catch (error) {
@@ -91,6 +100,8 @@ export const getUserOrders = async (req, res) => {
             // 把商品详情带上，方便前端展示
             include: {
                 product: true,
+                buyer: { select: { id: true, walletAddress: true } },
+                seller: { select: { id: true, walletAddress: true } },
                 reviews: {
                     select: {
                         id: true,
@@ -122,15 +133,23 @@ export const getUserOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { status } = req.body; // 前端传过来的新状态，如 'SHIPPED', 'COMPLETED', 'DISPUTED'
+        const { status, txHash } = req.body; // 前端传过来的新状态，如 'SHIPPED', 'COMPLETED', 'DISPUTED'
         const userId = req.user.userId;
+        const web3Config = getWeb3Config();
 
         // 先查出这笔订单
         const order = await prisma.order.findUnique({
-            where: { id: parseInt(orderId) }
+            where: { id: parseInt(orderId) },
+            include: {
+                buyer: { select: { walletAddress: true } },
+                seller: { select: { walletAddress: true } }
+            }
         });
 
         if (!order) return res.status(404).json({ error: "订单不存在" });
+        if (!['SHIPPED', 'COMPLETED', 'DISPUTED'].includes(status)) {
+            return res.status(400).json({ error: "订单目标状态不合法" });
+        }
 
         // 🛡️ 极简的权限校验：
         // 只有卖家能发货
@@ -142,10 +161,19 @@ export const updateOrderStatus = async (req, res) => {
             return res.status(403).json({ error: "只有买家才能进行此操作" });
         }
 
-        // 更新订单状态
+        if (web3Config.web3Mode) {
+            if (!txHash) return res.status(400).json({ error: "Web3 模式必须提交链上交易哈希" });
+            const action = { SHIPPED: 'SHIP', COMPLETED: 'COMPLETE', DISPUTED: 'DISPUTE' }[status];
+            await verifyEscrowEvent({ order, action, txHash });
+        }
+
+        const txData = web3Config.web3Mode
+            ? ({ SHIPPED: { shipTxHash: txHash }, COMPLETED: { completeTxHash: txHash }, DISPUTED: { disputeTxHash: txHash } }[status])
+            : {};
+
         const updatedOrder = await prisma.order.update({
             where: { id: parseInt(orderId) },
-            data: { status }
+            data: { status, ...txData }
         });
 
         return res.status(200).json(updatedOrder);
@@ -159,20 +187,7 @@ export const mockPayOrder = async (req, res) => {
     try {
         const { orderId } = req.params;
 
-        // 1. 安全地读取 config.ini (即使文件不存在也不会让程序崩溃)
-        let isWeb3Mode = false; // 默认给 false 方便你现在测试
-        try {
-            const iniPath = path.resolve(process.cwd(), 'config.ini');
-            if (fs.existsSync(iniPath)) {
-                const content = fs.readFileSync(iniPath, 'utf8');
-                const match = content.match(/WEB3_MODE\s*=\s*(\w+)/);
-                if (match) isWeb3Mode = match[1].toUpperCase() === 'TRUE';
-            }
-        } catch (err) {
-            console.warn("⚠️ 读取 config.ini 失败，按默认 Web2 模式执行。");
-        }
-
-        if (isWeb3Mode) {
+        if (getWeb3Config().web3Mode) {
             return res.status(400).json({ error: "当前处于真 Web3 模式，请去链上发起交易而非调用此模拟接口" });
         }
 
@@ -203,6 +218,45 @@ export const mockPayOrder = async (req, res) => {
         // 👇 关键改动：把真正的错误甩在控制台上！
         console.error("🚨 mockPayOrder 彻底崩溃，真实原因：", error);
         return res.status(500).json({ error: "模拟付款失败", details: error.message });
+    }
+};
+
+export const confirmWeb3Payment = async (req, res) => {
+    try {
+        const orderId = Number(req.params.orderId);
+        const { txHash } = req.body;
+        const userId = req.user.userId;
+
+        if (!txHash) return res.status(400).json({ error: "缺少链上交易哈希" });
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                buyer: { select: { walletAddress: true } },
+                seller: { select: { walletAddress: true } }
+            }
+        });
+
+        if (!order) return res.status(404).json({ error: "订单不存在" });
+        if (order.buyerId !== userId) return res.status(403).json({ error: "只有买家可以确认付款" });
+        if (order.status !== 'PENDING') return res.status(400).json({ error: `订单当前状态为 ${order.status}，不可确认付款` });
+
+        const { config } = await verifyEscrowEvent({ order, action: 'LOCK', txHash });
+        const updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+                status: 'LOCKED',
+                txHash,
+                lockTxHash: txHash,
+                chainId: config.chainId,
+                contractAddress: config.contractAddress
+            }
+        });
+
+        res.json({ message: "链上付款已确认，订单已锁定", orderId: updatedOrder.id, status: updatedOrder.status });
+    } catch (error) {
+        console.error("确认链上付款失败:", error);
+        res.status(400).json({ error: error.message || "确认链上付款失败" });
     }
 };
 

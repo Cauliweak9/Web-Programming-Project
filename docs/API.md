@@ -77,6 +77,28 @@ Common errors:
 { "error": "该账号已被管理员封禁，暂时无法登录" }
 ```
 
+### Bind Wallet
+
+- Method: `POST`
+- URL: `/api/auth/wallet`
+- Description: Bind an EVM wallet address to the current user after signing the server-provided message.
+- Token: Yes
+
+Get signing message first:
+
+```http
+GET /api/web3/bind-message?address=0x...
+```
+
+Request body:
+
+```json
+{
+  "address": "0x...",
+  "signature": "0x..."
+}
+```
+
 ## Products
 
 ### List Products
@@ -290,6 +312,21 @@ Common errors:
 - Description: In Web2 demo mode, move order from `PENDING` to `LOCKED`.
 - Token: Yes
 
+### Confirm Web3 Payment
+
+- Method: `PATCH`
+- URL: `/api/orders/:orderId/web3-lock`
+- Description: In Web3 mode, verify a `lockFunds(orderId, seller)` transaction receipt and move order from `PENDING` to `LOCKED`.
+- Token: Yes
+
+Request body:
+
+```json
+{
+  "txHash": "0x..."
+}
+```
+
 ### Update Order Status
 
 - Method: `PATCH`
@@ -300,8 +337,17 @@ Common errors:
 Request body:
 
 ```json
-{ "status": "SHIPPED" }
+{ "status": "SHIPPED", "txHash": "0x... when WEB3_MODE=TRUE" }
 ```
+
+## Web3 Config
+
+### Public Config
+
+- Method: `GET`
+- URL: `/api/web3/config`
+- Description: Return public chain settings and escrow ABI for browser wallets.
+- Token: No
 
 ## Reviews
 

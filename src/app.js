@@ -7,6 +7,7 @@ import reviewRoutes from './routes/review.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import skillRoutes from './routes/skill.routes.js';
+import web3Routes from './routes/web3.routes.js';
 import { startBlockchainListener } from './services/blockchain.listener.js';
 import adminRoutes from './routes/admin.routes.js';
 
@@ -34,6 +35,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/web3', web3Routes);
 
 const PORT = process.env.PORT || 3000;
 

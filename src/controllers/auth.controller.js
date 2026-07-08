@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { getAddress } from 'ethers';
+import { verifyWalletSignature } from '../services/web3.service.js';
 
 const prisma = new PrismaClient();
 
@@ -12,6 +14,8 @@ function publicUser(user) {
         role: user.role,
         creditRating: user.creditRating,
         isBanned: user.isBanned,
+        walletAddress: user.walletAddress,
+        walletBoundAt: user.walletBoundAt,
         createdAt: user.createdAt
     };
 }
@@ -89,6 +93,8 @@ export const getMe = async (req, res) => {
                 role: true,
                 creditRating: true,
                 isBanned: true,
+                walletAddress: true,
+                walletBoundAt: true,
                 createdAt: true
             }
         });
@@ -121,6 +127,8 @@ export const updateMe = async (req, res) => {
                 role: true,
                 creditRating: true,
                 isBanned: true,
+                walletAddress: true,
+                walletBoundAt: true,
                 createdAt: true
             }
         });
@@ -128,5 +136,38 @@ export const updateMe = async (req, res) => {
         res.json({ message: '个人信息已更新', user });
     } catch (error) {
         res.status(500).json({ error: '更新个人信息失败', details: error.message });
+    }
+};
+
+export const bindWallet = async (req, res) => {
+    try {
+        const { address, signature } = req.body;
+        if (!address || !signature) return res.status(400).json({ error: '钱包地址和签名不能为空' });
+
+        const walletAddress = getAddress(address);
+        if (!verifyWalletSignature(req.user.userId, walletAddress, signature)) {
+            return res.status(400).json({ error: '签名验证失败，请使用该钱包重新签名' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { walletAddress, walletBoundAt: new Date() },
+            select: {
+                id: true,
+                email: true,
+                nickname: true,
+                role: true,
+                creditRating: true,
+                isBanned: true,
+                walletAddress: true,
+                walletBoundAt: true,
+                createdAt: true
+            }
+        });
+
+        res.json({ message: '钱包地址已绑定', user });
+    } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: '该钱包地址已被其他账号绑定' });
+        res.status(500).json({ error: '绑定钱包失败', details: error.message });
     }
 };

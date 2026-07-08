@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人信息 - 校园二手交易平台</title>
     <script src="/vendor/vue.global.prod.js"></script>
+    <script src="/vendor/ethers.umd.min.js"></script>
+    <script src="/web3.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -42,6 +44,11 @@
                                 <div class="text-sm text-green-700 font-bold">信用分</div>
                                 <div class="text-xl font-black">{{ user.creditRating }}</div>
                             </div>
+                        </div>
+                        <div class="border rounded p-4">
+                            <div class="text-sm text-gray-700 font-bold mb-1">Web3 钱包地址</div>
+                            <div class="font-mono text-sm break-all text-gray-700">{{ user.walletAddress || '未绑定' }}</div>
+                            <button @click="bindWallet" class="mt-3 bg-gray-900 text-white font-bold px-4 py-2 rounded hover:bg-gray-800">连接并绑定钱包</button>
                         </div>
                     </div>
 
@@ -117,7 +124,20 @@
                     }
                 };
 
-                return { user, nickname, loading, error, message, save };
+                const bindWallet = async () => {
+                    error.value = '';
+                    message.value = '';
+                    try {
+                        const data = await Web3Trade.bindWallet(token);
+                        user.value = data.user;
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        message.value = data.message || '钱包地址已绑定';
+                    } catch (err) {
+                        error.value = err.message;
+                    }
+                };
+
+                return { user, nickname, loading, error, message, save, bindWallet };
             }
         }).mount('#app');
     </script>

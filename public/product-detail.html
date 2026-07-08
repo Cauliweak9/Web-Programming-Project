@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>商品详情 - 校园二手交易平台</title>
     <script src="/vendor/vue.global.prod.js"></script>
+    <script src="/vendor/ethers.umd.min.js"></script>
+    <script src="/web3.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -75,11 +77,13 @@
                 const loading = ref(true);
                 const error = ref('');
                 const recommendations = ref([]);
+                const web3Config = ref({ web3Mode: false });
                 const id = new URLSearchParams(window.location.search).get('id');
                 const authHeaders = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
                 onMounted(() => {
                     if (!token) { alert('请先登录'); window.location.href = 'login.html'; return; }
+                    Web3Trade.config().then(cfg => { web3Config.value = cfg; }).catch(() => {});
                     fetchProduct();
                 });
 
@@ -113,7 +117,8 @@
                 const buyProduct = async () => {
                     if (!product.value) return;
                     if (!confirm(`确认购买「${product.value.title}」？`)) return;
-                    const simulatedCryptoAmount = parseFloat((product.value.priceFiat / 20000).toFixed(4)) || 0.1;
+                    const ethPrice = web3Config.value.demoEthPrice || 20000;
+                    const simulatedCryptoAmount = parseFloat((product.value.priceFiat / ethPrice).toFixed(6)) || 0.001;
                     try {
                         const res = await fetch(`${API_BASE}/api/orders`, {
                             method: 'POST',
@@ -122,9 +127,30 @@
                         });
                         const data = await res.json();
                         if (!res.ok) { alert(`下单失败：${data.error}`); return; }
+                        if (data.web3) {
+                            if (!confirm('订单已创建。是否现在通过钱包锁定链上资金？')) {
+                                window.location.href = 'dashboard.html';
+                                return;
+                            }
+                            const txHash = await Web3Trade.lockFunds({
+                                id: data.orderId,
+                                cryptoAmount: data.cryptoAmount,
+                                sellerAddress: data.web3.sellerAddress
+                            });
+                            const lockRes = await fetch(`${API_BASE}/api/orders/${data.orderId}/web3-lock`, {
+                                method: 'PATCH',
+                                headers: authHeaders,
+                                body: JSON.stringify({ txHash })
+                            });
+                            const lockData = await lockRes.json();
+                            if (!lockRes.ok) { alert(`链上确认失败：${lockData.error}`); return; }
+                            alert('链上资金已锁定，即将进入订单中心。');
+                            window.location.href = 'dashboard.html';
+                            return;
+                        }
                         alert('下单成功，即将进入订单中心。');
                         window.location.href = 'dashboard.html';
-                    } catch (e) { alert('网络错误'); }
+                    } catch (e) { alert(e.message || '网络错误'); }
                 };
 
                 const reportProduct = async () => {

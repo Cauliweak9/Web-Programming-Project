@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的订单 - 校园二手交易平台</title>
     <script src="/vendor/vue.global.prod.js"></script>
+    <script src="/vendor/ethers.umd.min.js"></script>
+    <script src="/web3.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -12,6 +14,9 @@
     <div id="app">
         <main class="container mx-auto p-6 max-w-5xl">
             <h1 class="text-2xl font-bold mb-6 text-gray-800">我的订单</h1>
+            <div v-if="web3Config.web3Mode" class="mb-4 bg-blue-50 border border-blue-100 text-blue-800 rounded-lg p-3 text-sm">
+                Web3 模式：{{ web3Config.chainName }} / {{ shortAddress(web3Config.contractAddress) }}
+            </div>
             <div v-if="orders.length === 0" class="text-gray-500 text-center py-10 bg-white rounded-xl shadow">暂无订单。</div>
 
             <section class="space-y-4">
@@ -32,9 +37,12 @@
                             </div>
                         </div>
                     </div>
+                    <div v-if="order.txHash || order.lockTxHash || order.shipTxHash || order.completeTxHash || order.disputeTxHash" class="text-xs text-gray-500 font-mono break-all mb-4">
+                        Tx: {{ order.completeTxHash || order.disputeTxHash || order.shipTxHash || order.lockTxHash || order.txHash }}
+                    </div>
 
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button v-if="order.buyerId === myUserId && order.status === 'PENDING'" @click="mockPay(order.id)" class="bg-blue-600 text-white px-5 py-2 rounded">模拟付款</button>
+                        <button v-if="order.buyerId === myUserId && order.status === 'PENDING'" @click="payOrder(order)" class="bg-blue-600 text-white px-5 py-2 rounded">{{ web3Config.web3Mode ? '链上付款' : '模拟付款' }}</button>
                         <button v-if="order.buyerId === myUserId && order.status === 'PENDING'" @click="cancelOrder(order.id)" class="bg-gray-500 text-white px-5 py-2 rounded">取消订单</button>
                         <button v-if="order.sellerId === myUserId && order.status === 'LOCKED'" @click="updateOrderStatus(order.id, 'SHIPPED')" class="bg-yellow-500 text-white px-5 py-2 rounded">确认发货</button>
                         <template v-if="order.buyerId === myUserId && order.status === 'SHIPPED'">
@@ -58,6 +66,7 @@
                 const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
                 const orders = ref([]);
                 const myUserId = ref(null);
+                const web3Config = ref({ web3Mode: false });
                 const authHeaders = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
                 onMounted(() => {
@@ -67,6 +76,7 @@
                         return;
                     }
                     try { myUserId.value = JSON.parse(atob(token.split('.')[1])).userId; } catch (e) {}
+                    Web3Trade.config().then(cfg => { web3Config.value = cfg; }).catch(() => {});
                     fetchOrders();
                 });
 
@@ -86,8 +96,24 @@
                         const data = await res.json();
                         if (res.ok) { alert('模拟付款成功，订单已锁定。'); fetchOrders(); }
                         else alert(data.error || '付款失败');
-                    } catch (e) { alert('网络错误'); }
+                    } catch (e) { alert(e.message || '网络错误'); }
                 };
+
+                const web3Pay = async (order) => {
+                    try {
+                        const txHash = await Web3Trade.lockFunds(order);
+                        const res = await fetch(`${API_BASE}/api/orders/${order.id}/web3-lock`, {
+                            method: 'PATCH',
+                            headers: authHeaders,
+                            body: JSON.stringify({ txHash })
+                        });
+                        const data = await res.json();
+                        if (res.ok) { alert('链上付款已确认，订单已锁定。'); fetchOrders(); }
+                        else alert(data.error || '链上付款确认失败');
+                    } catch (e) { alert(e.message || '链上付款失败'); }
+                };
+
+                const payOrder = (order) => web3Config.value.web3Mode ? web3Pay(order) : mockPay(order.id);
 
                 const cancelOrder = async (orderId) => {
                     if (!confirm('确认取消该订单？商品会重新上架。')) return;
@@ -96,30 +122,33 @@
                         const data = await res.json();
                         if (res.ok) { alert(data.message || '订单已取消'); fetchOrders(); }
                         else alert(data.error || '取消失败');
-                    } catch (e) { alert('网络错误'); }
+                    } catch (e) { alert(e.message || '网络错误'); }
                 };
 
                 const updateOrderStatus = async (orderId, status) => {
                     try {
+                        const order = orders.value.find(item => item.id === orderId);
+                        const txHash = web3Config.value.web3Mode ? await Web3Trade.updateOrder(order, status) : undefined;
                         const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
                             method: 'PATCH',
                             headers: authHeaders,
-                            body: JSON.stringify({ status })
+                            body: JSON.stringify({ status, txHash })
                         });
                         const data = await res.json();
                         if (res.ok) { alert(`订单状态已更新为 ${statusText(status)}`); fetchOrders(); }
                         else alert(data.error || '操作失败');
-                    } catch (e) { alert('网络错误'); }
+                    } catch (e) { alert(e.message || '网络错误'); }
                 };
 
                 const hasReviewed = (order) => (order.reviews || []).some(review => review.reviewerId === myUserId.value);
                 const canReview = (order) => order.buyerId === myUserId.value && order.status === 'COMPLETED' && !hasReviewed(order);
                 const goToReview = (orderId) => { window.location.href = `review.html?orderId=${orderId}`; };
+                const shortAddress = (address) => address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '未配置';
                 const getStatusColor = (status) => ({ PENDING:'border-gray-400', LOCKED:'border-blue-500', SHIPPED:'border-yellow-500', COMPLETED:'border-green-500', DISPUTED:'border-red-500' }[status] || 'border-gray-300');
                 const getStatusBadgeClass = (status) => ({ PENDING:'bg-gray-100 text-gray-700', LOCKED:'bg-blue-100 text-blue-700', SHIPPED:'bg-yellow-100 text-yellow-700', COMPLETED:'bg-green-100 text-green-700', DISPUTED:'bg-red-100 text-red-700', REFUNDED:'bg-gray-100 text-gray-700', RELEASED:'bg-indigo-100 text-indigo-700' }[status] || 'bg-gray-100 text-gray-700');
                 const statusText = (status) => ({ PENDING:'待付款', LOCKED:'已付款', SHIPPED:'已发货', COMPLETED:'已完成', DISPUTED:'争议中', REFUNDED:'已退款', RELEASED:'已放款' }[status] || status);
 
-                return { orders, myUserId, mockPay, cancelOrder, updateOrderStatus, hasReviewed, canReview, goToReview, getStatusColor, getStatusBadgeClass, statusText };
+                return { orders, myUserId, web3Config, payOrder, cancelOrder, updateOrderStatus, hasReviewed, canReview, goToReview, shortAddress, getStatusColor, getStatusBadgeClass, statusText };
             }
         }).mount('#app');
     </script>

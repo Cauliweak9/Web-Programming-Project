@@ -4,6 +4,11 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 const DEMO_EMAILS = ['admin@test.com', 'seller@test.com', 'buyer@test.com'];
+const DEMO_WALLETS = {
+    admin: process.env.DEMO_ADMIN_WALLET || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+    buyer: process.env.DEMO_BUYER_WALLET || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+    seller: process.env.DEMO_SELLER_WALLET || '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
+};
 
 const demoProducts = [
     {
@@ -111,55 +116,7 @@ function creditDelta(rating) {
 }
 
 async function clearDemoData() {
-    const demoUsers = await prisma.user.findMany({
-        where: { email: { in: DEMO_EMAILS } },
-        select: { id: true }
-    });
-    const demoUserIds = demoUsers.map((user) => user.id);
-    const demoProductTitles = demoProducts.map((product) => product.title);
-
-    const demoProductRows = await prisma.product.findMany({
-        where: {
-            OR: [
-                { title: { in: demoProductTitles } },
-                demoUserIds.length > 0 ? { sellerId: { in: demoUserIds } } : undefined
-            ].filter(Boolean)
-        },
-        select: { id: true }
-    });
-    const demoProductIds = demoProductRows.map((product) => product.id);
-
-    const userConditions = [
-        demoUserIds.length > 0 ? { reviewerId: { in: demoUserIds } } : undefined,
-        demoUserIds.length > 0 ? { revieweeId: { in: demoUserIds } } : undefined
-    ].filter(Boolean);
-    if (userConditions.length) {
-        await prisma.review.deleteMany({ where: { OR: userConditions } });
-    }
-
-    const orderConditions = [
-        demoUserIds.length > 0 ? { buyerId: { in: demoUserIds } } : undefined,
-        demoUserIds.length > 0 ? { sellerId: { in: demoUserIds } } : undefined,
-        demoProductIds.length > 0 ? { productId: { in: demoProductIds } } : undefined
-    ].filter(Boolean);
-    if (orderConditions.length) {
-        await prisma.order.deleteMany({ where: { OR: orderConditions } });
-    }
-
-    if (demoProductIds.length) {
-        await prisma.report.deleteMany({ where: { productId: { in: demoProductIds } } });
-    }
-
-    await prisma.product.deleteMany({
-        where: {
-            OR: [
-                { title: { in: demoProductTitles } },
-                demoUserIds.length > 0 ? { sellerId: { in: demoUserIds } } : undefined
-            ].filter(Boolean)
-        }
-    });
-
-    await prisma.user.deleteMany({ where: { email: { in: DEMO_EMAILS } } });
+    await prisma.$executeRawUnsafe('TRUNCATE TABLE "Review", "Report", "Order", "Product", "User" RESTART IDENTITY CASCADE');
 }
 
 async function main() {
@@ -176,7 +133,9 @@ async function main() {
             passwordHash,
             nickname: '系统管理员',
             role: 'ADMIN',
-            creditRating: 100
+            creditRating: 100,
+            walletAddress: DEMO_WALLETS.admin,
+            walletBoundAt: new Date()
         }
     });
 
@@ -186,7 +145,9 @@ async function main() {
             passwordHash,
             nickname: '校园卖家',
             role: 'USER',
-            creditRating: 100
+            creditRating: 100,
+            walletAddress: DEMO_WALLETS.seller,
+            walletBoundAt: new Date()
         }
     });
 
@@ -196,7 +157,9 @@ async function main() {
             passwordHash,
             nickname: '校园买家',
             role: 'USER',
-            creditRating: 100
+            creditRating: 100,
+            walletAddress: DEMO_WALLETS.buyer,
+            walletBoundAt: new Date()
         }
     });
 
@@ -280,6 +243,11 @@ async function main() {
     console.log('启动项目：npm run dev');
     console.log('登录页面：http://localhost:3000/login.html');
     console.log(`管理员账号已创建：${admin.email}`);
+    console.log('');
+    console.log('演示钱包地址：');
+    console.log(`  admin : ${DEMO_WALLETS.admin}`);
+    console.log(`  seller: ${DEMO_WALLETS.seller}`);
+    console.log(`  buyer : ${DEMO_WALLETS.buyer}`);
 }
 
 main()
