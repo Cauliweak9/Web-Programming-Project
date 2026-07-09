@@ -20,7 +20,10 @@ npx prisma db push --accept-data-loss
 npm run seed
 
 Write-Host "[3/7] Start Anvil Osaka chain on port $anvilPort"
-docker rm -f $containerName 2>$null | Out-Null
+$existing = docker ps -a -q -f name=$containerName
+if ($existing) {
+    docker rm -f $containerName | Out-Null
+}
 docker run -d --name $containerName -p "${anvilPort}:8545" $image "anvil --host 0.0.0.0 --hardfork osaka" | Out-Null
 Start-Sleep -Seconds 2
 

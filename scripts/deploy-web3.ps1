@@ -21,10 +21,24 @@ if (-not $arbiterAddress) {
     $arbiterAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 }
 
+Write-Host "Building contracts..."
 docker run --rm -e "ARBITER_ADDRESS=$arbiterAddress" -v "${projectPath}:/app" -w /app $image "forge build"
-$output = docker run --rm -e "ARBITER_ADDRESS=$arbiterAddress" -v "${projectPath}:/app" -w /app $image "forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url $rpcUrl --private-key $privateKey --broadcast"
-$output
+if ($LASTEXITCODE -ne 0) {
+    throw "Forge build failed with exit code $LASTEXITCODE"
+}
 
+Write-Host "Deploying contract..."
+$output = docker run --rm -e "ARBITER_ADDRESS=$arbiterAddress" -v "${projectPath}:/app" -w /app $image "forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url $rpcUrl --private-key $privateKey --broadcast"
+if ($LASTEXITCODE -ne 0) {
+    throw "Deployment script failed with exit code $LASTEXITCODE"
+}
+# 输出部署日志（可选）
+Write-Host $output
+
+# 解析地址前，确保 $output 非空
+if (-not $output) {
+    throw "Deployment output is empty. Check RPC connection and contract script."
+}
 $match = [regex]::Match($output, "(?mi)(?:Deployed to|Contract Address):\s*(0x[a-fA-F0-9]{40})|contract\s+MarketplaceEscrow\s+(0x[a-fA-F0-9]{40})")
 if (-not $match.Success) {
     throw "Deployment finished but contract address was not parsed. Check forge output above."
